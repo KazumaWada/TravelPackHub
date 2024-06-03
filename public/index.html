@@ -1,12 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <p>yo</p>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Pack Hub</title>
+  <!-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> -->
 </head>
 <body>
-    
+ 
+     <h1>Travel Pack Hub</h1>
+     <p>ワーホリ/海外旅行に必要な持ち物まとめ</p>
+
+     <!-- scraping -->
+     <div> 
+        <h3 id="articles-container"></h3>  
+     </div>
+     <p id="axios-demo"></p>
+     <!-- axiosを直接CDNで読み込んでいる -->
+     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+     <script src="./index.js"></script>
 </body>
 </html>
