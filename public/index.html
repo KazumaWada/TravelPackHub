@@ -10,14 +10,18 @@
  
      <h1>Travel Pack Hub</h1>
      <p>ワーホリ/海外旅行に必要な持ち物まとめ</p>
-
      <!-- scraping -->
-     <div> 
-        <h3 id="articles-container"></h3>  
-     </div>
-     <p id="axios-demo"></p>
+     <h1>「ワーホリ 持ち物」の検索結果</h1>
+     <div id="results"></div>
      <!-- axiosを直接CDNで読み込んでいる -->
      <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+     <!-- googleのcx(my search engine) -->
+     <!-- <script async src="https://cse.google.com/cse.js?cx=54e4ba88168494898">
+    </script> -->
+    <h1>Scraping Results</h1>
+    <button id="scrapeButton">Scrape Note.com</button>
+    <pre id="result"></pre>
+
      <script src="./index.js"></script>
 </body>
 </html>

@@ -24,7 +24,7 @@ services:
       MYSQL_ROOT_PASSWORD: example
       MYSQL_DATABASE: mydatabase
     ports:
-      - "3307:3307"  # 修正: MySQLのデフォルトポートは3306です
+      - "3306:3306"  # 修正: MySQLのデフォルトポートは3306です
     volumes:
       - db_data:/var/lib/mysql
 
