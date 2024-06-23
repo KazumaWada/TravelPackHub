@@ -1,6 +1,6 @@
 # ベースイメージとしてNode.js 18を使用
 # ベースイメージとしてNode.js 18を使用
-FROM node:18
+FROM --platform=linux/amd64 node:18
 
 # アプリケーションディレクトリを作成
 WORKDIR /app

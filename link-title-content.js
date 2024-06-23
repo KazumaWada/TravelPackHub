@@ -50,20 +50,22 @@ async function scrapeData() {
     const content = await page.content();
     const $ = cheerio.load(content);
     const linkItems = $("a.a-link.m-largeNoteWrapper__link.fn");
+    const titleItems = $(".m-noteBody__title");
     const root = "https://note.com";
     const articles = [];
 
     linkItems.each((idx, el) => {
       if (idx < 10) {
         const href = $(el).attr('href');
-        if (href) {
-          articles.push({ link: root + href });
+        const title = titleItems.eq(idx).text().trim();
+        if (href && title) {
+          articles.push({ link: root + href, title });
         }
       }
     });
-    console.log('リンクを抽出しました:', articles);
+    console.log('リンクとタイトルを抽出しました:', articles);
 
-    // 記事のAmazonリンクを抽出する
+    // 記事の内容とAmazonリンクを抽出する
     const articlesWithAmazonLinks = await Promise.all(articles.map(async (article) => {
       const articlePage = await browser.newPage();
       await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 300000 }); // 5分に設定
@@ -72,27 +74,20 @@ async function scrapeData() {
       const amazonLinks = [];
       $$('a').each((i, elem) => {
         const href = $$(elem).attr('href');
-        if (href && href.startsWith('https://www.amazon.co.jp/dp/')) {
-          // '?' が出現した時点で止めるようにする
-          const match = href.match(/^https:\/\/www\.amazon\.co\.jp\/dp\/[^?]+/);
-          if (match) {
-            amazonLinks.push(match[0]);
-          }
+        if (href && href.includes('amazon')) {
+          amazonLinks.push(href);
         }
       });
       await articlePage.close();
-      return amazonLinks.length > 0 ? { link: article.link, amazonLinks: amazonLinks.join(',') } : null;
+      return { ...article, amazonLinks: amazonLinks.join(',') };
     }));
     console.log('記事内容を抽出しました:', articlesWithAmazonLinks);
 
-    // Amazonリンクがある記事のみをフィルタリング
-    const validArticles = articlesWithAmazonLinks.filter(article => article !== null);
-
     // データをデータベースに保存
-    for (const article of validArticles) {
-      const query = 'INSERT INTO departments (contentAmazonLink) VALUES (?) ON DUPLICATE KEY UPDATE contentAmazonLink = VALUES(contentAmazonLink)';
+    for (const article of articlesWithAmazonLinks) {
+      const query = 'INSERT INTO departments (contentTitle, contentLink, contentAmazonLink) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE contentLink = VALUES(contentLink), contentAmazonLink = VALUES(contentAmazonLink)';
       try {
-        await connection.execute(query, [article.amazonLinks]);
+        await connection.execute(query, [article.title, article.link, article.amazonLinks]);
         console.log('データをデータベースに挿入しました:', article);
       } catch (err) {
         console.error('データベース挿入エラー:', err);

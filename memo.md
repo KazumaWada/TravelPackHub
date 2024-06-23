@@ -192,7 +192,7 @@ title は獲得した。done
 時間を決めてスクレイぷするのが間違ってるのかもしれない。その日の最初にネットワーク通信をした瞬間にスクレイぷをするという条件。
 ↓
 
-# 今
+
 
 link と taile が取得できたら、DB にデータが入っているのか確認。
 ↓
@@ -238,4 +238,86 @@ language=ja_JP&ref_=as_li_ss_tl
 
 
 
+データベース接続を閉じました
+app-1  | データベースに接続しました
+app-1  | スクレイプを開始します
+app-1  | スクレイプ中にエラーが発生しました: Error: Failed to launch the browser process!
 
+Puppeteerにエラーがあるからブラウザを操作できないんだと思う。
+app-1  | TROUBLESHOOTING: https://pptr.dev/troubleshooting
+app-1  | 
+app-1  |     at Interface.onClose (/app/node_modules/@puppeteer/browsers/lib/cjs/launch.js:262:24)
+app-1  |     at Interface.emit (node:events:529:35)
+app-1  |     at Interface.close (node:internal/readline/interface:534:10)
+app-1  |     at Socket.onend (node:internal/readline/interface:260:10)
+app-1  |     at Socket.emit (node:events:529:35)
+app-1  |     at endReadableNT (node:internal/streams/readable:1400:12)
+app-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+と、これもブラウザのエラー
+rosetta error: failed to open elf at /lib64/ld-linux-x86-64.so.2
+
+
+ ちゃんとdockerが機能していて、ブラウザに表示されている。だからそして、スクレイ日中に問題が発生しているから、問題はそこだと思うよ？
+ 
+ - puppeterを使用せずにスクレイプしてみることも検討する。
+ - それかこれを読むhttps://pptr.dev/troubleshooting#running-puppeteer-in-docker
+
+ どうやったら、シンプルに依存関係をあまり使わずにアプリを作ることができるのか考えてみる。
+# 今今今↓これに鍵があると思うんだよな。Googleでも調べてみる。
+ # そもそも新しいパソコンに変えてエラーが発生したんだから、m1に問題があると思う。ARMとかいうキーワードがあるから調べてみる。
+ M2チップ（Apple製のM1チップのことと思われます）を搭載したMacでDockerを使用する際に発生する問題について説明します。
+
+### DockerとM1チップ（M2チップ）の互換性について
+
+Apple製のM1チップ（Apple Silicon）を搭載したMacは、従来のIntelチップ（x86アーキテクチャ）とは異なるARMアーキテクチャを採用しています。これにより、従来のx86向けにビルドされたソフトウェアやコンテナがARMアーキテクチャで問題なく動作するかどうかが重要な問題となります。
+
+#### DockerのARM対応
+
+Dockerは通常、x86アーキテクチャ向けにビルドされていますが、最近のバージョンではARM（特にARM64）アーキテクチャにも対応しています。しかし、これにはいくつかの制限や注意点があります。
+
+1. **Docker DesktopのARMサポート**: Docker Desktopの最新バージョンでは、ARMアーキテクチャ（ARM64）向けのサポートが追加されています。これにより、M1チップ搭載のMacでもDockerを使用することが可能になります。
+
+2. **イメージのアーキテクチャ**: Docker Hubや他のイメージリポジトリから取得するDockerイメージは、ARM向けにも提供されているものが増えてきていますが、全てのイメージがARMに対応しているわけではありません。特に特定のソフトウェアやライブラリに依存している場合、ARM向けのバイナリが提供されていない可能性があります。
+
+3. **マルチアーキテクチャ対応**: Dockerはマルチアーキテクチャ（multi-platform）のサポートを進めており、同じDockerfileで複数のアーキテクチャ向けにビルドすることができる仕組みを提供しています。これにより、x86とARMの両方をサポートするイメージを作成できます。
+
+### M1チップでのDockerの設定
+
+M1チップ搭載のMacでDockerを使用する場合、以下の手順に従って設定を行うことが推奨されます。
+
+1. **Docker Desktopのインストール**: 公式のDocker Desktopをインストールします。最新バージョンではARM向けのサポートが強化されています。
+
+2. **アーキテクチャに合わせたイメージの使用**: Dockerfileでイメージを選択する際に、ARM向けのイメージを使用するようにします。例えば、Node.jsの場合、`node:14`ではなく `node:14-alpine` のようにalpine（軽量版）イメージを選ぶことが推奨されます。
+
+3. **ビルドのテストと調整**: Dockerfileで設定されたDockerイメージがARMアーキテクチャ向けに正常にビルドされ、動作するかどうかをテストします。特に依存関係やライブラリのインストールが問題なく行われることを確認します。
+
+### エラーの対応
+
+もし具体的なエラーが発生している場合は、エラーメッセージやログを確認し、それに基づいて以下のような対応を行うことが推奨されます：
+
+- **エラーメッセージの理解**: Dockerやビルド中の特定のステップでどのようなエラーが発生しているかを確認します。エラーメッセージが示す内容に基づいて、問題の原因を特定します。
+
+- **設定の再確認**: Docker Desktopの設定やDockerfileの内容を再確認し、必要な設定や修正があれば行います。特にイメージの選択や依存関係の管理に注意します。
+
+- **コミュニティや公式サポートの活用**: Dockerの公式ドキュメントやコミュニティでの質問を通じて、同様の問題を抱えている人々の経験や解決策を学びます。
+
+M1チップ搭載のMacでDockerを使用する際は、最新のソフトウェアとドキュメントを参照し、問題を解決するためのリソースを有効活用することが重要です。
+
+# amazonのリンクのみを取得する(✅)
+ってことは商品のみのリンクが欲しいなら、dp/以降の?まで取得すればいいんだね?
+↓
+ブログ内で
+"https://www.amazon.co.jp/dp/"を探す。
+↓
+?まで取得してくる。
+# count機能を実装する
+gptにこんな質問をした。:
+それで、同じリンクがあったらcountしたいんだけど、hashmapを使いたい。早そうだから。で、そのcountはDB内に作るべき?それともserver内に作るべき?
+それで、同じリンクがあったらcountしたいんだけど、hashmapを使いたい。早そうだから。で、そのcountはDB内に作るべき?それともserver内に作るべき?
+↓
+gptの回答:
+amazonLinkを格納する前にそれがすでに存在しているかチェック
+count++
+ORDER BY count DESC;で大きい順に並べていく。
+# countからランキングを作る
+# そのランキングの商品を自分のアソシエイトのidに置き換えて実装する。
