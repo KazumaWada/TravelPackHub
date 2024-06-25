@@ -6,22 +6,39 @@
   <title>Travel Pack Hub</title>
   <!-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> -->
 </head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
 <body>
- 
-     <h1>Travel Pack Hub</h1>
-     <p>ワーホリ/海外旅行に必要な持ち物まとめ</p>
-     <!-- scraping -->
-     <h1>「ワーホリ 持ち物」の検索結果</h1>
-     <div id="results"></div>
+  <h1>Amazon Link Ranking</h1>
+  <table id="ranking-table">
+    <thead>
+      <tr>
+        <th>Amazon Link</th>
+        <th>Count</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rankings will be appended here -->
+    </tbody>
+  </table>
      <!-- axiosを直接CDNで読み込んでいる -->
-     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-     <!-- googleのcx(my search engine) -->
-     <!-- <script async src="https://cse.google.com/cse.js?cx=54e4ba88168494898">
-    </script> -->
-    <h1>Scraping Results</h1>
-    <button id="scrapeButton">Scrape Note.com</button>
-    <pre id="result"></pre>
-
-     <script src="./index.js"></script>
+     <!-- <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> -->
+     <script src="index.js"></script>
 </body>
 </html>

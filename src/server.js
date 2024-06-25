@@ -5,6 +5,18 @@ const app = express();
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const cron = require('node-cron');
+const cors = require('cors');
+
+// 静的ファイルの提供設定
+
+app.use(cors({
+  // origin: 'http://127.0.0.1:3000', // ここまだclient設定してないけど、とりあえず書いておく。
+  // methods: ['GET', 'POST'], // 許可するHTTPメソッド
+  // allowedHeaders: ['Content-Type'] // Content-Typeを許可する
+}));
+app.use(express.static(path.join(__dirname, '../public')));
+app.use('/ranking', express.static('ranking'));
+
 
 // MySQLデータベース接続設定
 async function createConnection() {
@@ -36,9 +48,10 @@ async function scrapeData() {
   }
   let connection;
   try {
+    //DBと非同期通信
     connection = await createConnection();
     console.log('スクレイプを開始します');
-
+    //browserへクロールしにいく
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       headless: 'new'  // Opt in to the new headless mode
@@ -46,13 +59,14 @@ async function scrapeData() {
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 300000 }); // 5分に設定
     console.log('ページにアクセスしました');
-
+    //欲しいaタグデータのクラスを変数に格納
     const content = await page.content();
     const $ = cheerio.load(content);
     const linkItems = $("a.a-link.m-largeNoteWrapper__link.fn");
     const root = "https://note.com";
     const articles = [];
-
+    //aタグをloopでarticlesへ格納
+    //10個まで取得してくる
     linkItems.each((idx, el) => {
       if (idx < 10) {
         const href = $(el).attr('href');
@@ -63,7 +77,7 @@ async function scrapeData() {
     });
     console.log('リンクを抽出しました:', articles);
 
-    // 記事のAmazonリンクを抽出する
+    // 記事のAmazonリンク(アソシエイトリンクを省く)を抽出する
     const articlesWithAmazonLinks = await Promise.all(articles.map(async (article) => {
       const articlePage = await browser.newPage();
       await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 300000 }); // 5分に設定
@@ -81,21 +95,22 @@ async function scrapeData() {
         }
       });
       await articlePage.close();
-      return amazonLinks.length > 0 ? { link: article.link, amazonLinks: amazonLinks.join(',') } : null;
+      return amazonLinks.length > 0 ? { link: article.link, amazonLinks: amazonLinks } : null;
     }));
     console.log('記事内容を抽出しました:', articlesWithAmazonLinks);
 
     // Amazonリンクがある記事のみをフィルタリング
     const validArticles = articlesWithAmazonLinks.filter(article => article !== null);
 
-    // データをデータベースに保存
+    // amazonLinkがある記事のみデータをデータベースに保存
     for (const article of validArticles) {
-      const query = 'INSERT INTO departments (contentAmazonLink) VALUES (?) ON DUPLICATE KEY UPDATE contentAmazonLink = VALUES(contentAmazonLink)';
-      try {
-        await connection.execute(query, [article.amazonLinks]);
-        console.log('データをデータベースに挿入しました:', article);
-      } catch (err) {
-        console.error('データベース挿入エラー:', err);
+      for (const amazonLink of article.amazonLinks) {
+        const [rows] = await connection.execute('SELECT id, count FROM departments WHERE contentAmazonLink = ?', [amazonLink]);
+        if (rows.length > 0) {
+          await connection.execute('UPDATE departments SET count = count + 1, last_scraped = CURRENT_TIMESTAMP WHERE id = ?', [rows[0].id]);
+        } else {
+          await connection.execute('INSERT INTO departments (contentAmazonLink, count) VALUES (?, 1)', [amazonLink]);
+        }
       }
     }
 
@@ -113,15 +128,44 @@ async function scrapeData() {
   }
 }
 
-// Schedule the job to run every minute but ensure it runs only once
-cron.schedule('* * * * *', scrapeData);
+// Schedule the job to run every week (Sunday at midnight)
+// cron.scheule('0 0 * * 0', scrapeData);
+//毎分//
+// cron.schedule('* * * * *', scrapeData);
 
+// app.get('/', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../public/index.html'));
+// });
+//毎分//
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+  if (!isCronScheduled) {
+    console.log('初回アクセスを検出しました。30分ごとのスクレイピングを開始します。');
+    scrapeData(); // 初回スクレイピングを開始
+    cron.schedule('*/30 * * * *', scrapeData); // 30分ごとにスクレイピングを実行
+    isCronScheduled = true;
+  }
+});
+
+// ランキングを取得してブラウザへ出力するエンドポイント
+app.get('/ranking', async (req, res) => {
+  let connection;
+  try {
+    connection = await createConnection();
+    const [rows] = await connection.execute('SELECT contentAmazonLink, count FROM departments ORDER BY count DESC');
+    console.log("output of ranking" + rows);
+    res.json(rows);//send
+  } catch (err) {
+    console.error('エラー:', err);
+    res.status(500).send('サーバーエラー');
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
