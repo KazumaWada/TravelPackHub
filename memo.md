@@ -324,7 +324,7 @@ ORDER BY count DESC;で大きい順に並べていく。
 ↓
 
 次はそれを順位でブラウザに表示する
-## 続き
+
 どうやったらlinkと一緒にそのlinkが存在したnoteのlinkを表示できるか考える。
 - titleLinkは取得された後どうなっている?
 - tableを新たに作成する必要がある。
@@ -337,6 +337,88 @@ validArticles(リンクのみ)
 記事ごとにスクレイピングして、その記事内で見つけたすべてのAmazonリンクを対応する記事のIDと一緒に保存します。
 # countからランキングを作る
 
+## 続き
+- ランキングの商品のリンクを自分のアソシエイトのリンクに置き換えて、画像がしっかりと表示されるか確かめる(デプロイ後可能。)
 
+- bootstrapを使用してcardのプロトタイプを作成する(✅)
+- そのuiをループさせて適応させる(✅)
+server.js157
+- titleに該当するclassを取得する。(✅)
+
+- コードを読む(✅)
+# 今
+- article_titleを組み込む(82,87 lineまだあるかもしれないけど、GPTに聞かずにこれは自分で修正していった方がいい気がする。またわからなくなるから。 )
+- まず全てのコードが正しく動いたら、リファクタリングをする。
+server.jsは取得したデータとフロントへ送るデータが合致していない。(titleを追加したから、titleを新しくscrapeしてくる必要がある。)
+- 紹介されているブログをリンクではなく、タイトルに置き換える。
+DBにarticleTitltを追加する✅
+- 紹介されている記事は5つまでにする。(記事の中でいいねが多い順で記事を表示)
+- amazonのlinkの商品titleを取得する
+- 順位(number)を逆順に表示する
 
 # そのランキングの商品を自分のアソシエイトのidに置き換えて実装する。
+
+# amazonの商品表示はデプロイしてからやる事になりそう
+amazonアソシエイトに参加するために、メールアドレスを作り、ドメインを取得する必要がある。そしてアソシエイトのリンクと画像をしっかりと表示するのを確かめるには、localhostではなく、一度deployしてドメインを取得してからでないとできないのでは?別にそれがデメリットというわけでは無いけれど。
+↓
+はい、正しいです。Amazonアソシエイトプログラムに参加するためには、メールアドレスとドメインを取得する必要があります。また、アソシエイトリンクや画像が正しく表示されることを確認するためには、ローカルホストではなく、実際のドメイン上にデプロイする必要があります。
+
+
+
+# 今
+titleを挿入する前にDBに挿入するコードが自分には複雑だから、
+まず中間テーブルを理解して、
+挿入するときのコードもわかりやすくする。
+
+これが元のリンク
+https://www.amazon.co.jp/dp/B007E66HHS
++
+/?tag=myassociateid-22
+自分のタグ
+imnotkatsuma-22
+
+https://www.amazon.co.jp/dp/B007E66HHS//?tag=imnotkatsuma-22
+これで行けた。
+
+# likesをスクレイプする
+class: o-noteLikeV3__count
+
+
+ </h1> <div class="o-noteContentHeader__titleAttachment" data-v-bdb6e458><span class="o-noteLikeV3" data-v-08dfc59d data-v-bdb6e458><span class="o-noteLikeV3__iconContainer" data-v-08dfc59d><span class="o-noteLikeV3__iconContainerInner" data-v-08dfc59d><button aria-pressed="false" aria-label="スキ" class="o-noteLikeV3__iconButton leading-none flex items-center" data-v-08dfc59d><i aria-hidden="true" data-disable-focus="true" data-tooltip="スキ" data-fill="lightGray" class="o-noteLikeV3__icon a-icon a-icon--heart a-icon--size_mediumSmall" data-v-08dfc59d><!----></i> </button> <!----></span></span>  <!----> <button aria-label="11スキ この記事にスキをつけたユーザーを見る" class="text-text-secondary o-noteLikeV3__count o-noteLikeV3__count--mediumSmall" data-v-08dfc59d>
+    11
+  </button></span> <!----> <!----></div></div> <div class="o-noteContentHeader__creatorInfo" data-v-bdb6e458><a href="/imnotkatsuma" aria-hidden="true" class="o-noteContentHeader__avatar a-link" data-v-c3f14588 data-v-bdb6e458><div class="m-avatar m-avatar--medium" data-v-5c1c7fdc data-v-bdb6e458><img src="data:image/svg+xml;charset=utf8,%3Csvg%20viewBox%3D%220%200%20100%20100%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23f7f9f9%22%2F%3E%3Cstop%20offset%3D%2233%25%22%20stop-color%3D%22%23f7f9f9%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%23fff%22%2F%3E%3Cstop%20offset%3D%2267%25%22%20stop-color%3D%22%23f7f9f9%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23f7f9f9%22%2F%3E%3CanimateTransform%20attributeName%3D%22gradientTransform%22%20type%3D%22translate%22%20from%3D%22-1%200%22%20to%3D%221%200%22%20begin%3D%220s%22%20dur%3D%221.5s%22%20repeatCount%3D%22indefinite%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath%20class%3D%22rect%22%20fill%3D%22url(%23a)%22%20d%3D%22M-100-100h300v300h-300z%22%2F%3E%3C%2Fsvg%3E" data-src="https://assets.st-note.com/production/uploads/images/145501842/profile_008495c8ebd85aff0e30e3fd4a51009c.png?width=60" alt="カズマ＠シドニーワーホリ" decoding="async" loading="lazy" width="56" height="56" class="a-image m-avatar__image lazyload" data-v-50e2377b data-v-5c1c7fdc></div></a> <div class="o-noteContentHeader__info" data-v-bdb6e458><div class="o-noteContentHeader__name" data-v-bdb6e458><a href="/imnotkatsuma" class="a-link" data-v-c3f14588 data-v-bdb6e458>
+          カズマ＠シドニーワーホリ
+
+# 続き
+likesがnullのままになっている。直したから、いったんdockerのキャッシュを削除してもう一度実行してみる。
+ゴール
+84line
+  {
+app-1  |     link: 'https://note.com/mimi_latte/n/nfee47f94ad90',
+app-1  |     title: '【ワーホリ準備】渡航前持ち物リスト完全版',
+app-1  |     likes: null<-ここがちゃんと数字で表示されているようにする!
+app-1  |   }
+
+# 今
+likeが取得できた。
+↓
+今ここがエラーになっている。
+const [articleRows] = await connection.execute('SELECT id FROM articles WHERE articleLink = ?', [article.link]);
+↓
+その前に、DBを挿入するコード116はこのまま上のエラーを直すのか、それとも自分がわかりやすいように書き換えるのか。
+↓
+書き換える。自分で学びたいから。
+だから、116から書き直す。
+
+# 中間テーブル
+amzonLinkを取り出した後に、そのamazonIdに中間テーブル内で繋がっているarticleIdを全部取り出すということだね?
+そして、中間テーブルにあるidとarticleidは同じだから、中間テーブルにあるamazonid[articleid]をarticleidと繋げて取り出す。
+
+ChatGPT
+はい、その通りです。
+
+
+
+# 続き
+amazonLinksが全て2つ格納されてしまっている。(スキップ)
+記事内で6つくらいリンクがあるのに1つしか取得できていない(スキップ)

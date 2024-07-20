@@ -41,6 +41,10 @@ RUN apt-get update && apt-get install -y \
 # 最新のmysql2をインストール
 RUN npm install mysql2@latest
 
+# bootstrap
+RUN npm install bootstrap@v5.3.3
+#"bootstrap": "^5.2.0"
+
 # 依存関係をインストール
 RUN npm install
 
