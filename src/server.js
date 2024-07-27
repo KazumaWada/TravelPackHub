@@ -33,9 +33,7 @@ async function createConnection() {
     throw err;
   }
 }
-
 const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E3%83%AF%E3%83%BC%E3%83%9B%E3%83%AA%E3%80%80%E3%82%A2%E3%83%9E%E3%82%BE%E3%83%B3&context=note&mode=search";
-
 let hasScraped = false; // Flag to check if scraping has been done
 
 // データをスクレイプする非同期関数
@@ -54,7 +52,7 @@ async function scrapeData() {
       headless: 'new'
     });
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 300000 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 600000 });
     console.log('ページにアクセスしました');
     const content = await page.content();
     const $ = cheerio.load(content);
@@ -66,7 +64,7 @@ async function scrapeData() {
     const articles = [];
     // get Link,Title
     articleTitleAndLinks.each((idx, el) => {
-      if (idx < 10) {
+      if (idx < 5) {//LOOK 77line
         const href = $(el).attr('href');
         const title = $(el).attr('title');  
         if (href) {
@@ -76,7 +74,7 @@ async function scrapeData() {
     });
     // get Likes
     articleLikes.each((idx, el) => {
-     if (idx < 10 && articles[idx]) {
+     if (idx < 5 && articles[idx]) {//LOOK! 67lines
       const likes = $(el).text().trim();
       articles[idx].likes = likes; 
        }
@@ -87,7 +85,7 @@ async function scrapeData() {
     ///SCAN AMAZON LINK ARTICLES FROM articles///
     const articlesWithAmazonLinks = await Promise.all(articles.map(async (article) => {
       const articlePage = await browser.newPage();
-      await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 300000 });
+      await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 600000 });
       const articleContent = await articlePage.content();
       const $$ = cheerio.load(articleContent);
       const amazonLinks = [];
@@ -110,14 +108,14 @@ async function scrapeData() {
     //nullのデータを取り除く
     const validArticles = articlesWithAmazonLinks.filter(article => article !== null);
 
-    ////insert scraped data to DB///////
-    for(const article of validArticles){
+    ////INSERT SCRAPED DATA TO DB///////
+    for(const article of validArticles){//この中は、link,title,likesとamazonLinks:{...}
       //ARTICLE TABLE//
-      const [articleDataInserted] = await connection.execute('insert into articles (Link,Title,Likes) values (?,?,?)', [article.link, article.title, article.likes]);
+      const [articleDataInserted] = await connection.execute('insert into articles (Article_link,Title,Likes) values (?,?,?)', [article.link, article.title, article.likes]);
       const articleId = articleDataInserted.insertId;//get article_id
       //AMAZON TABLE//
       for (const amazonLink of article.amazonLinks) {//id,link,count
-        const [amazonLinkExist] =  await connection.execute('SELECT id, count FROM amazon_links WHERE Link = ?', [amazonLink]);//amazon exist?
+        const [amazonLinkExist] =  await connection.execute('SELECT id, count FROM amazon_links WHERE Amazon_link = ?', [amazonLink]);//amazon exist?
 
         if(amazonLinkExist.length > 0){
         //count++
@@ -125,58 +123,14 @@ async function scrapeData() {
          await connection.execute('UPDATE amazon_links SET count = count +1 WHERE id = ?', [amazonId]);
         }else{
         //count = 1
-        const [amazonDataInserted] = await connection.execute('insert into amazon_links (Link, count) values (?, 1)', [amazonLink]);
+        const [amazonDataInserted] = await connection.execute('insert into amazon_links (Amazon_link, count) values (?, 1)', [amazonLink]);
         let amazonId = amazonDataInserted.insertId;//get amazon_id
         //JOIN TABLE//
         await connection.execute('insert into article_amazon (article_id, amazon_id) values (?, ?)', [articleId, amazonId]);
         }
       }
     }
-
-
-
-
-
-
-
-    //////insert scraped data to DB//////////////
-    // for (const article of validArticles) {//amazonが含まれている記事のlink
-    //   const [articleRows] = await connection.execute('SELECT id FROM articles WHERE Link = ?', [article.link]);
-    //   let articleId;
-    //   //articleLinkが既に存在する->articleIdを同じにする。既に存在するのと。
-    //   if (articleRows.length > 0) {
-    //     //SELECTで該当したlinkを返しているから、毎回[0]になっている。
-    //     articleId = articleRows[0].id;
-    //   } 
-    //   //articleLinkが存在しなかったら->idを新たに取得して、それを格納する。
-    //   else {
-    //     //ここでlinkも挿入したいから、articles[link]でtitleがいけると思う。
-          　　　　　　　　　　　　　　　　　　　　　　　　　　//articleLinkの欄にarticle.linkを挿入している。
-    //     const [result] = await connection.execute('INSERT INTO articles (articleLink) VALUES (?)', [article.link]);
-    //     articleId = result.insertId;
-    //   }
-    //   //ここもamazonが含まれている記事のlinkと同じことをしている
-    //   for (const amazonLink of article.amazonLinks) {//amazonのlink
-    //     const [amazonRows] = await connection.execute('SELECT id, count FROM amazon_links WHERE amazonLink = ?', [amazonLink]);
-    //     let amazonId;
-    //     if (amazonRows.length > 0) {
-    //       amazonId = amazonRows[0].id;
-    //       await connection.execute('UPDATE amazon_links SET count = count + 1, last_scraped = CURRENT_TIMESTAMP WHERE id = ?', [amazonId]);
-    //     } else {
-    //       const [result] = await connection.execute('INSERT INTO amazon_links (amazonLink) VALUES (?)', [amazonLink]);
-    //       amazonId = result.insertId;
-    //     }
-    //     //中間テーブルで上記2つのidが使われる。
-    //     const [articleAmazonRows] = await connection.execute('SELECT * FROM article_amazon WHERE article_id = ? AND amazon_id = ?', [articleId, amazonId]);
-    //     //idがどちらも存在しなかったら、上記で設定したidを格納する。
-    //     if (articleAmazonRows.length === 0) {
-    //       await connection.execute('INSERT INTO article_amazon (article_id, amazon_id) VALUES (?, ?)', [articleId, amazonId]);
-    //     }
-    //   }
-    // }
-//////insert scraped data to DB//////////////
-
-
+    ////insert scraped data to DB///////
     await browser.close();
     console.log('ブラウザを閉じました');
 
@@ -194,40 +148,80 @@ async function scrapeData() {
 // 1分ごとにスクレイピングを実行する
 cron.schedule('* * * * *', scrapeData);
 
-// ランキングを取得してブラウザへ出力するエンドポイント
+let connection;
+// ブラウザへ出力するエンドポイント
 app.get('/ranking', async (req, res) => {
-  let connection;
-  try {
+  try{
     connection = await createConnection();
-    //get data from amazonLinks table
-    const [amazonRows] = await connection.execute('SELECT amazon_links.id, amazon_links.amazonLink, amazon_links.count FROM amazon_links ORDER BY amazon_links.count DESC');
-    const results = [];
-    //loop using data above
-    for (const amazonRow of amazonRows) {
-      //記事のLinkを取得して、そのLinkのidと同じamazonのIdを中間テーブルにjoinしてget
-      const [articleRows] = await connection.execute(`
-        SELECT articles.articleLink 
-        FROM articles
-        INNER JOIN article_amazon ON articles.id = article_amazon.article_id
-        WHERE article_amazon.amazon_id = ?
-      `, [amazonRow.id]);
-      results.push({
-        amazonLink: amazonRow.amazonLink,
-        count: amazonRow.count,
-        //中間テーブルでgetしたarticle_id全て
-        articles: articleRows.map(row => row.articleLink)
-      });
-    }
-    //results[amazonのLink, count, 中間テーブルで取得したarticle_link全て]
-    res.json(results);
-  } catch (err) {
-    console.error('エラー:', err);
-    res.status(500).send('サーバーエラー');
-  } finally {
-    if (connection) {
-      await connection.end();
-    }
+      //get amazonLinks.link(商品ランキング) && article.link,.title(紹介されている記事top5)
+    const [rows] = await connection.execute(`
+    WITH TopAmazonLink AS (
+      SELECT id, Amazon_link
+      FROM amazon_links
+      ORDER BY Count DESC
+      LIMIT 5
+      )
+    SELECT 
+      TopAmazonLink.Amazon_link,
+      articles.Article_link, 
+      articles.title,  
+      articles.likes
+    FROM TopAmazonLink
+    JOIN article_amazon ON TopAmazonLink.id = article_amazon.amazon_id
+    JOIN articles ON article_amazon.article_id = articles.id
+    ORDER BY articles.likes DESC;
+    `);
+    //フロントを確認したら、rowsにamazonのリンクが入っていなかった。多分書き方がおかしいんだと思う。
+    res.json(rows);//フロントへ送信
+  }catch(error){
+    console.error('error fetching ranking data: ', error);
+    res.status(500).json({error: 'internal server error'});
   }
+  
+    //フロントに送信。
+    
+
+
+
+
+
+
+
+
+
+
+  // let connection;
+  // try {
+  //   connection = await createConnection();
+  //   //get data from amazonLinks table
+  //   const [amazonRows] = await connection.execute('SELECT amazon_links.id, amazon_links.amazonLink, amazon_links.count FROM amazon_links ORDER BY amazon_links.count DESC');
+  //   const results = [];
+  //   //loop using data above
+  //   for (const amazonRow of amazonRows) {
+  //     //記事のLinkを取得して、そのLinkのidと同じamazonのIdを中間テーブルにjoinしてget
+  //     const [articleRows] = await connection.execute(`
+  //       SELECT articles.articleLink 
+  //       FROM articles
+  //       INNER JOIN article_amazon ON articles.id = article_amazon.article_id
+  //       WHERE article_amazon.amazon_id = ?
+  //     `, [amazonRow.id]);
+  //     results.push({
+  //       amazonLink: amazonRow.amazonLink,
+  //       count: amazonRow.count,
+  //       //中間テーブルでgetしたarticle_id全て
+  //       articles: articleRows.map(row => row.articleLink)
+  //     });
+  //   }
+  //   //results[amazonのLink, count, 中間テーブルで取得したarticle_link全て]
+  //   res.json(results);
+  // } catch (err) {
+  //   console.error('エラー:', err);
+  //   res.status(500).send('サーバーエラー');
+  // } finally {
+  //   if (connection) {
+  //     await connection.end();
+  //   }
+  // }
 });
 
 const PORT = process.env.PORT || 3000;

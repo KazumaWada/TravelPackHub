@@ -1,14 +1,14 @@
 -- amazonが基準だから、先頭にする
 CREATE TABLE amazon_links (
     id INT AUTO_INCREMENT PRIMARY KEY, -- AUTO_INCREMENTでidは自動挿入されている。
-    Link TEXT NOT NULL,
+    Amazon_link TEXT NOT NULL,
     Count INT NOT NULL,
     last_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE articles (
     id INT AUTO_INCREMENT PRIMARY KEY, -- AUTO_INCREMENTでidは自動挿入されている。
-    Link TEXT NOT NULL,
+    Article_link TEXT NOT NULL,
     Title TEXT NOT NULL,
     Likes INT NOT NULL
 );
