@@ -36,7 +36,7 @@ async function createConnection() {
 const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E3%83%AF%E3%83%BC%E3%83%9B%E3%83%AA%E3%80%80%E3%82%A2%E3%83%9E%E3%82%BE%E3%83%B3&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 
-// データをスクレイプする非同期関数
+// SCRAPING FROM "note.com"
 async function scrapeData() {
   if (hasScraped) {
     console.log('スクレイピングはすでに実行されました');
@@ -89,14 +89,16 @@ async function scrapeData() {
       const articleContent = await articlePage.content();
       const $$ = cheerio.load(articleContent);
       const amazonLinks = [];
+      const amazonTitles = [];
       $$('a').each((i, elem) => {
         //ここにtitleも追加する。
         const href = $$(elem).attr('href');
         if (href && href.startsWith('https://www.amazon.co.jp/dp/')) {
           const match = href.match(/^https:\/\/www\.amazon\.co\.jp\/dp\/[^?]+/);
           if (match) {
-            //amazonTitle.push or それより前にhashとかで繋げる。
             amazonLinks.push(match[0]);
+            //amazonLinksAndTitles.push(amazonLink : linkMatch[0], amazonTitle: titleMatch[0]);
+            //matchのリンクからamazon.comへ移動して、titleを取得して、validArticlesへ挿入する。
           }
         }
       });
@@ -107,7 +109,33 @@ async function scrapeData() {
     console.log('got data of amazonLink, amazonTitle):', articlesWithAmazonLinks);
     //nullのデータを取り除く
     const validArticles = articlesWithAmazonLinks.filter(article => article !== null);
-
+    ////SCRAPING FROM amazon.com for amazon.title, amazon.img////
+  //   async function getAmazonTitle(url) {
+  //     const browser = await puppeteer.launch({
+  //       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  //       headless: 'new'
+  //     });
+  //     const page = await browser.newPage();
+  //     await page.goto(url);
+  
+  //     // ページの内容を取得
+  //     const content = await page.content();
+  
+  //     // Cheerioを使ってHTMLをパース
+  //     const $ = cheerio.load(content);
+  
+  //     // タイトルを取得
+  //     const title = $('#productTitle').text().trim();
+  
+  //     await browser.close();
+  //     return title;
+  // }
+  //     getAmazonTitle(amazonLink).then(title => {
+  //         console.log('Product Title:', title);
+  //     }).catch(err => {
+  //         console.error(err);
+  //     });
+  
     ////INSERT SCRAPED DATA TO DB///////
     for(const article of validArticles){//この中は、link,title,likesとamazonLinks:{...}
       //ARTICLE TABLE//
@@ -122,10 +150,11 @@ async function scrapeData() {
          let amazonId = amazonLinkExist[0].id;//get Id where the one already exist and count++ in that row.
          await connection.execute('UPDATE amazon_links SET count = count +1 WHERE id = ?', [amazonId]);
         }else{
+        //amazonLinkがまだ挿入されていない場合
         //count = 1
-        const [amazonDataInserted] = await connection.execute('insert into amazon_links (Amazon_link, count) values (?, 1)', [amazonLink]);
-        let amazonId = amazonDataInserted.insertId;//get amazon_id
-        //JOIN TABLE//
+       const [amazonDataInserted] = await connection.execute('insert into amazon_links (Amazon_link, count) values (?, 1)', [amazonLink]);
+       let amazonId = amazonDataInserted.insertId;//get amazon_id
+        //JOIN TABLE(中間)//
         await connection.execute('insert into article_amazon (article_id, amazon_id) values (?, ?)', [articleId, amazonId]);
         }
       }
@@ -146,6 +175,9 @@ async function scrapeData() {
 }
 
 // 1分ごとにスクレイピングを実行する
+//これいちいちスクレイピングしないで、一回したら、データをそのままDBに保持する
+//やり方とかあるのかな?dockerで。今のままだと、DBに入ってもまた空っぽになってしまう。
+//dockerが
 cron.schedule('* * * * *', scrapeData);
 
 let connection;

@@ -419,5 +419,66 @@ ChatGPT
 
 
 
+
+- ランキングの数字を表示(✅)
+- articles.likesを表示(✅)
 # 続き
-dockerを起動して、フロントにデータが表示されるか確認する。
+- Amazon.titleの取得()
+titleをどこに挿入するのかで止まっている。
+amazonのlinkを取得した後にtitleを取得する。
+1.validArticleにamazon.titleを取得して挿入しておく。
+2.amazonLinkをDBに挿入する直前に取得する。
+->1の方が、自然。コード的に。
+100lineあたり。
+validArticlesの形を変更する必要がある??
+validArticleLinks: [
+app-1  |   null,
+app-1  |   null,
+app-1  |   null,
+app-1  |   null,
+app-1  |   {
+app-1  |     link: 'https://note.com/mimi_latte/n/nfee47f94ad90',
+app-1  |     title: '【ワーホリ準備】渡航前持ち物リスト完全版',
+app-1  |     likes: '7',
+app-1  |     amazonLinks: [
+app-1  |       'https://www.amazon.co.jp/dp/B007E66HHS',
+app-1  |       'https://www.amazon.co.jp/dp/B007E66HHS',
+app-1  |       'https://www.amazon.co.jp/dp/B07ZGV9W29',
+app-1  |     ]
+app-1  |   }
+app-1  | ]
+↓これを
+validArticleLinks: [
+app-1  |   null,
+app-1  |   null,
+app-1  |   null,
+app-1  |   null,
+app-1  |   {
+app-1  |     link: 'https://note.com/mimi_latte/n/nfee47f94ad90',
+app-1  |     title: '【ワーホリ準備】渡航前持ち物リスト完全版',
+app-1  |     likes: '7',
+app-1  |     amazonLinksAndTitles: [
+app-1  |       link: 'https://www.amazon.co.jp/dp/B007E66HHS', title: "hogehoge",
+app-1  |       link: 'https://www.amazon.co.jp/dp/B007E66HHS', title: "hogehoge",
+               link: 'https://www.amazon.co.jp/dp/B007E66HHS', title: "hogehoge",
+app-1  |     ]
+app-1  |   }
+app-1  | ]
+そしてこれをDBに格納していく。
+156line
+amazonLinks->amazonLinkでloopしている
+const [amazonDataInserted] = connection.execute('insert into amazon_links (Amazon_link, Amazon_title, count) values (?,?,1)', [amazonLink, amazonTitle]);
+↓これを
+amazonLinksAndTitles->amazonLinkAndTitle.linkとamazonAndTitle.titleで挿入できる。
+const [amazonDataInserted] = connection.execute('insert into amazon_links (Amazon_link, Amazon_title, count) values (?,?,1)', [amazonLinkAndTitle.link, amazonLinkAndTitle.title]);
+
+
+
+
+
+
+
+- Amazon.imgを取得()
+- DBの修正(ADD: amazon.title,amazon.img)
+- Amazon.link + 自分のID
+- リファクタリング()
