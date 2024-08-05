@@ -42,56 +42,72 @@ async function createConnection() {
     throw err;
   }
 }
+
+//global
 const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E3%83%AF%E3%83%BC%E3%83%9B%E3%83%AA%E3%80%80%E3%82%A2%E3%83%9E%E3%82%BE%E3%83%B3&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
+const root = "https://note.com";
+const articles = [];
+
+
+async function getTitleLinks(data, $){
+data.each((idx, el) => {
+  if (idx < 7) {//LOOK 86line
+    const href = $(el).attr('href');
+    const title = $(el).attr('title');  
+    if (href) {
+      articles.push({ link: root + href, title: title, likes : null });
+    }
+  }
+});
+return articles;
+}
+
+async function getLikes(data, $){
+  data.each((idx, el) => {
+    if (idx < 7 && articles[idx]) {//LOOK! 76lines
+     const likes = $(el).text().trim();
+     articles[idx].likes = likes; 
+      }
+    });
+    return articles;
+}
+
 
 // SCRAPING FROM "note.com"
 async function scrapeData() {
+
   if (hasScraped) {
     console.log('スクレイピングはすでに実行されました');
     return;
   }
-  ///INI///
+  
   let connection;
   try {
+    ///DB Connection///
     connection = await createConnection();
     console.log('スクレイプを開始します');
+    //scraping setting//
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       headless: 'new'
     });
+    //access web browser//
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 2000000 });
     console.log('ページにアクセスしました');
     const content = await page.content();
     const $ = cheerio.load(content);
-    ///GET LINK,TITLE,LIKES///
-    const articleTitleAndLinks = $("a.a-link.m-largeNoteWrapper__link.fn");
-    //const articleLikes = $("button.o-noteLikeV3__count");//.textcontent
-    const articleLikes = $("span.text-text-secondary");//.textcontent
-    const root = "https://note.com";
-    const articles = [];
-    // get Link,Title
-    articleTitleAndLinks.each((idx, el) => {
-      if (idx < 7) {//LOOK 86line
-        const href = $(el).attr('href');
-        const title = $(el).attr('title');  
-        if (href) {
-          articles.push({ link: root + href, title: title, likes : null });
-        }
-      }
-    });
-    // get Likes
-    articleLikes.each((idx, el) => {
-     if (idx < 7 && articles[idx]) {//LOOK! 76lines
-      const likes = $(el).text().trim();
-      articles[idx].likes = likes; 
-       }
-     });
+    //parts you want to scrape//
+    const titlesAndLinks = $("a.a-link.m-largeNoteWrapper__link.fn");
+    const likes = $("span.text-text-secondary");//.textcontent  
+    //scrape// 
+    await getTitleLinks(titlesAndLinks, $) 
+    await getLikes(likes, $);
 
-    console.log('リンクとタイトルを抽出しました:', articles);
-
-      ////SCRAPING FROM amazon.com for amazon.title, amazon.img////
+    console.log('got link,likes,title:', articles);
+///////////////ここで区切ることができそう。///////////////////////////////////////////////
+    ////SCRAPING FROM amazon.com ////
     async function getAmazonTitle(url) {
       const browser = await puppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
