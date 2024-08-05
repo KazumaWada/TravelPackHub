@@ -44,6 +44,8 @@ RUN npm install mysql2@latest
 # bootstrap
 RUN npm install bootstrap@v5.3.3
 #"bootstrap": "^5.2.0"
+# dotenvをインストール
+RUN npm install dotenv
 
 # 依存関係をインストール
 RUN npm install

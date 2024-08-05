@@ -423,7 +423,7 @@ ChatGPT
 - ランキングの数字を表示(✅)
 - articles.likesを表示(✅)
 # 続き
-- Amazon.titleの取得()
+- Amazon.titleのDBへ格納()
 titleをどこに挿入するのかで止まっている。
 amazonのlinkを取得した後にtitleを取得する。
 1.validArticleにamazon.titleを取得して挿入しておく。
@@ -472,12 +472,49 @@ const [amazonDataInserted] = connection.execute('insert into amazon_links (Amazo
 amazonLinksAndTitles->amazonLinkAndTitle.linkとamazonAndTitle.titleで挿入できる。
 const [amazonDataInserted] = connection.execute('insert into amazon_links (Amazon_link, Amazon_title, count) values (?,?,1)', [amazonLinkAndTitle.link, amazonLinkAndTitle.title]);
 
+#8/3 4:14
+スクレイプ中にエラーが発生しました: TypeError: Bind parameters must not contain undefined. To pass SQL NULL specify JS null
+->3つ考えられる。
+1.promiseがまだ終わらずに、DB挿入のコードに行ってしまっている。
+2.promiseが終わったけど、null/undefinedが含まれている。
+3.article類を入れていなかった。
+//return amazon;
+return { link: article.link, title: article.title, likes: article.likes , amazon: amazon };
+3.1
+ Error: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received an instance of Promise
+ と、
+ app-1  |   {
+app-1  |     link: 'https://note.com/massubukuharian1/n/neb3f900c20e0',
+app-1  |     title: '【海外移住】日本から持ってきて良かったもの',
+app-1  |     likes: '46',
+app-1  |     amazon: []
+app-1  |   },
+app-1  |   {
+app-1  |     link: 'https://note.com/mimi_latte/n/nfee47f94ad90',
+app-1  |     title: '【ワーホリ準備】渡航前持ち物リスト完全版',
+app-1  |     likes: '7',
+app-1  |     amazon: [
+app-1  |       [Object], [Object],
+app-1  |       [Object], [Object],
+app-1  |       [Object], [Object],
+app-1  |       [Object], [Object],
+app-1  |       [Object], [Object],
+app-1  |       [Object], [Object]
+app-1  |     ]
+app-1  |   }
+app-1  | ]
+3.2
+多分、amazonの処理が終わる前に実行されてしまっているからエラーが起こっているんだと思う。そうだと思う??
+↓
+GPT:はい、おっしゃる通りです。
+↓
+# 続き 8/4 4:59
+修正したけど、validArticlesがundefinedとなったから、まだ修正されていない。多分、DBの部分を一緒にGPTに見せて答えを聞いたほうがいいと思う。
+or
+自分でこのコードが終わらせるまで待つ非同期の関数をかく
 
 
-
-
-
-
+- ホットリロード
 - Amazon.imgを取得()
 - DBの修正(ADD: amazon.title,amazon.img)
 - Amazon.link + 自分のID

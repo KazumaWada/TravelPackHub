@@ -1,8 +1,8 @@
 -- amazonが基準だから、先頭にする
-CREATE TABLE amazon_links (
+CREATE TABLE amazon (
     id INT AUTO_INCREMENT PRIMARY KEY, -- AUTO_INCREMENTでidは自動挿入されている。
     Amazon_link TEXT NOT NULL,
-    -- Amazon_title TEXT NOT NULL,
+    Amazon_title TEXT NOT NULL,
     Count INT NOT NULL,
     last_scraped TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

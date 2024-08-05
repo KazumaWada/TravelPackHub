@@ -6,15 +6,24 @@ const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const cron = require('node-cron');
 const cors = require('cors');
+//const dotenv = require('dotenv');
 
 // 静的ファイルの提供設定
 app.use(cors({
-  // origin: 'http://127.0.0.1:3000', // クライアント側の設定が必要です
-  // methods: ['GET', 'POST'],
-  // allowedHeaders: ['Content-Type']
+  origin: 'http://127.0.0.1:3000', // クライアント側の設定が必要です
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
 }));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/ranking', express.static('ranking'));
+
+// 環境変数の設定
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
+// プロセスのリスナーの上限を設定
+process.setMaxListeners(30); // Increase the limit
 
 // MySQLデータベース接続設定
 async function createConnection() {
@@ -52,7 +61,7 @@ async function scrapeData() {
       headless: 'new'
     });
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 600000 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 2000000 });
     console.log('ページにアクセスしました');
     const content = await page.content();
     const $ = cheerio.load(content);
@@ -64,7 +73,7 @@ async function scrapeData() {
     const articles = [];
     // get Link,Title
     articleTitleAndLinks.each((idx, el) => {
-      if (idx < 5) {//LOOK 77line
+      if (idx < 7) {//LOOK 86line
         const href = $(el).attr('href');
         const title = $(el).attr('title');  
         if (href) {
@@ -74,7 +83,7 @@ async function scrapeData() {
     });
     // get Likes
     articleLikes.each((idx, el) => {
-     if (idx < 5 && articles[idx]) {//LOOK! 67lines
+     if (idx < 7 && articles[idx]) {//LOOK! 76lines
       const likes = $(el).text().trim();
       articles[idx].likes = likes; 
        }
@@ -82,84 +91,198 @@ async function scrapeData() {
 
     console.log('リンクとタイトルを抽出しました:', articles);
 
-    ///SCAN AMAZON LINK ARTICLES FROM articles///
-    const articlesWithAmazonLinks = await Promise.all(articles.map(async (article) => {
-      const articlePage = await browser.newPage();
-      await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 600000 });
-      const articleContent = await articlePage.content();
-      const $$ = cheerio.load(articleContent);
-      const amazonLinks = [];
-      const amazonTitles = [];
-      $$('a').each((i, elem) => {
-        //ここにtitleも追加する。
-        const href = $$(elem).attr('href');
-        if (href && href.startsWith('https://www.amazon.co.jp/dp/')) {
-          const match = href.match(/^https:\/\/www\.amazon\.co\.jp\/dp\/[^?]+/);
-          if (match) {
-            amazonLinks.push(match[0]);
-            //amazonLinksAndTitles.push(amazonLink : linkMatch[0], amazonTitle: titleMatch[0]);
-            //matchのリンクからamazon.comへ移動して、titleを取得して、validArticlesへ挿入する。
-          }
-        }
+      ////SCRAPING FROM amazon.com for amazon.title, amazon.img////
+    async function getAmazonTitle(url) {
+      const browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: 'new'
       });
-      await articlePage.close();
-      //amazonLink無かったらnull
-      return amazonLinks.length > 0 ? { link: article.link, title: article.title, likes: article.likes , amazonLinks: amazonLinks } : null;
-    }));
-    console.log('got data of amazonLink, amazonTitle):', articlesWithAmazonLinks);
-    //nullのデータを取り除く
-    const validArticles = articlesWithAmazonLinks.filter(article => article !== null);
-    ////SCRAPING FROM amazon.com for amazon.title, amazon.img////
-  //   async function getAmazonTitle(url) {
-  //     const browser = await puppeteer.launch({
-  //       args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  //       headless: 'new'
-  //     });
-  //     const page = await browser.newPage();
-  //     await page.goto(url);
-  
-  //     // ページの内容を取得
-  //     const content = await page.content();
-  
-  //     // Cheerioを使ってHTMLをパース
-  //     const $ = cheerio.load(content);
-  
-  //     // タイトルを取得
-  //     const title = $('#productTitle').text().trim();
-  
-  //     await browser.close();
-  //     return title;
-  // }
-  //     getAmazonTitle(amazonLink).then(title => {
-  //         console.log('Product Title:', title);
-  //     }).catch(err => {
-  //         console.error(err);
-  //     });
-  
-    ////INSERT SCRAPED DATA TO DB///////
-    for(const article of validArticles){//この中は、link,title,likesとamazonLinks:{...}
-      //ARTICLE TABLE//
-      const [articleDataInserted] = await connection.execute('insert into articles (Article_link,Title,Likes) values (?,?,?)', [article.link, article.title, article.likes]);
-      const articleId = articleDataInserted.insertId;//get article_id
-      //AMAZON TABLE//
-      for (const amazonLink of article.amazonLinks) {//id,link,count
-        const [amazonLinkExist] =  await connection.execute('SELECT id, count FROM amazon_links WHERE Amazon_link = ?', [amazonLink]);//amazon exist?
+      const page = await browser.newPage();
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 2000000 });
 
-        if(amazonLinkExist.length > 0){
-        //count++
-         let amazonId = amazonLinkExist[0].id;//get Id where the one already exist and count++ in that row.
-         await connection.execute('UPDATE amazon_links SET count = count +1 WHERE id = ?', [amazonId]);
-        }else{
-        //amazonLinkがまだ挿入されていない場合
-        //count = 1
-       const [amazonDataInserted] = await connection.execute('insert into amazon_links (Amazon_link, count) values (?, 1)', [amazonLink]);
-       let amazonId = amazonDataInserted.insertId;//get amazon_id
-        //JOIN TABLE(中間)//
-        await connection.execute('insert into article_amazon (article_id, amazon_id) values (?, ?)', [articleId, amazonId]);
+  
+      // ページの内容を取得
+      const content = await page.content();
+  
+      // Cheerioを使ってHTMLをパース
+      const $ = cheerio.load(content);
+  
+      // タイトルを取得
+      const title = $('#productTitle').text().trim();
+  
+      await browser.close();
+      return title;
+  }
+      getAmazonTitle(url).then(title => {
+          console.log('Product Title:', title);
+      }).catch(err => {
+          console.error(err);
+      });
+
+    ///SCAN AMAZON LINK ARTICLES FROM articles///
+    // const articlesWithAmazonLinks = await Promise.all(articles.map(async (article) => {
+    //   const articlePage = await browser.newPage();
+    //   await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 2000000 });
+    //   const articleContent = await articlePage.content();
+    //   const $$ = cheerio.load(articleContent);
+    //   // const amazonLinks = [];
+    //   const amazon = [];
+    //   $$('a').each((i, elem) => {
+    //     //ここにtitleも追加する。
+    //     const href = $$(elem).attr('href');
+    //     if (href && href.startsWith('https://www.amazon.co.jp/dp/')) {
+    //       const match = href.match(/^https:\/\/www\.amazon\.co\.jp\/dp\/[^?]+/);
+    //       if (match) {
+    //         // amazonLinks.push(match[0]);
+    //         //linkとtitleを一緒にしないとDBに格納する時に苦労するから。
+    //         amazon.push({ amazonLink : match[0],amazonTitle: getAmazonTitle(match[0])});
+    //       }
+    //     }
+    //     }
+    //   );
+
+    //   await articlePage.close();
+    //   //amazon無かったらスキップ
+    //   if (amazon.length > 0) {
+    //     return { link: article.link, title: article.title, likes: article.likes , amazon: amazon };
+    //   }
+    // }));
+
+    // const articlesWithAmazonLinks = await Promise.all(
+    //   articles.map(async (article) => {
+    //     try {
+    //       const articlePage = await browser.newPage();
+    //       await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 2000000 });
+    //       const articleContent = await articlePage.content();
+    //       const $$ = cheerio.load(articleContent);
+    
+    //       const amazon = [];
+    //       $$('a').each((i, elem) => {
+    //         const href = $$(elem).attr('href');
+    //         if (href && href.startsWith('https://www.amazon.co.jp/dp/')) {
+    //           const match = href.match(/^https:\/\/www\.amazon\.co\.jp\/dp\/[^?]+/);
+    //           if (match) {
+    //             amazon.push({ amazonLink: match[0], amazonTitle: getAmazonTitle(match[0]) });
+    //           }
+    //         }
+    //       });
+    
+    //       //return amazon;
+    //       return { link: article.link, title: article.title, likes: article.likes , amazon: amazon };
+    //     } catch (error) {
+    //       console.error(`Error processing article: ${article.link}`, error);
+    //       return []; // エラーが発生した場合は空の配列を返す
+    //     }
+    //   })
+    // ).then(results => {//amazon
+    //   // ここで結果を処理する
+    //   console.log('All articles processed successfully', results);
+    //   return results;
+    // }).catch(error => {
+    //   // ここでエラーを処理する
+    //   console.error('Error processing articles', error);
+    // });
+    
+    
+    // //nullのデータを取り除く
+    // const validArticles = articlesWithAmazonLinks.filter(article => article !== null);
+    // console.log("validArticlesだよ!", validArticles);
+
+    // validArticlesだよ! [
+    //   app-1  |   [],
+    //   app-1  |   [],
+    //   app-1  |   [],
+    //   app-1  |   [],
+    //   app-1  |   [],
+    //   app-1  |   [],
+    //   app-1  |   [
+    //   app-1  |     {
+    //   app-1  |       amazonLink: 'https://www.amazon.co.jp/dp/B007E66HHS',
+    //   app-1  |       amazonTitle: [Promise]
+    //   app-1  |     },
+    //   app-1  |     {
+    //   app-1  |       amazonLink: 'https://www.amazon.co.jp/dp/B007E66HHS',
+    //   app-1  |       amazonTitle: [Promise]
+    //   app-1  |     },
+      
+
+//amazonが非同期で処理されるまで待ってからDBに挿入するコード
+async function processArticles(articles) {
+  try {
+    const validArticles = await Promise.all(
+      articles.map(async (article) => {
+        try {
+          const articlePage = await browser.newPage();
+          await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 2000000 });
+          const articleContent = await articlePage.content();
+          const $$ = cheerio.load(articleContent);
+
+          const amazon = [];
+          $$('a').each((i, elem) => {
+            const href = $$(elem).attr('href');
+            if (href && href.startsWith('https://www.amazon.co.jp/dp/')) {
+              const match = href.match(/^https:\/\/www\.amazon\.co\.jp\/dp\/[^?]+/);
+              if (match) {
+                amazon.push({ amazonLink: match[0], amazonTitle: getAmazonTitle(match[0]) });
+              }
+            }
+          });
+
+          return { link: article.link, title: article.title, likes: article.likes, amazon: amazon };
+        } catch (error) {
+          console.error(`Error processing article: ${article.link}`, error);
+          return { link: article.link, title: article.title, likes: article.likes, amazon: [] }; // エラーが発生した場合は空の配列を返す
         }
-      }
-    }
+      })
+    );
+
+    console.log('All articles processed successfully', validArticles);
+    return validArticles;
+  } catch (error) {
+    console.error('Error processing articles', error);
+    throw error; // エラーを再スローして呼び出し元で処理できるようにする
+  }
+}
+
+// 使用例
+// (async () => {
+//   try {
+//     //const articles = await fetchArticles(); // 仮の関数(articleの。もしvalidArticleでarticle.が定義されていなかったら、ここに挿入する。)
+//     const result = await processArticles(articles);
+//     console.log(result);
+//   } catch (error) {
+//     console.error('Error in processing flow', error);
+//   }
+// })();
+
+
+    
+
+  //   ////INSERT SCRAPED DATA TO DB///////
+    // for(const article of validArticles){//この中は、link,title,likesとamazonLinks:{...}
+    //   //ARTICLE TABLE//
+    //   const [articleDataInserted] = await connection.execute('insert into articles (Article_link,Title,Likes) values (?,?,?)', [article.link, article.title, article.likes]);
+    //   const articleId = articleDataInserted.insertId;//get article_id
+    //   //AMAZON TABLE//
+    //   for (const amazon of article.amazon) {//id,link,count
+    //     const [amazonLinkAndTitle] =  await connection.execute('SELECT id, count FROM amazon WHERE Amazon_link = ?', [amazon.amazonLink]);//amazon exist?
+
+    //     if(amazonLinkAndTitle.length > 0){
+    //     //count++
+    //      let amazonId = amazonLinkAndTitle[0].id;//get Id where the one already exist and count++ in that row.
+    //      await connection.execute('UPDATE amazon SET count = count +1 WHERE id = ?', [amazonId]);
+    //     }else{
+    //     //amazonLinkがまだ挿入されていない場合
+    //     //count = 1
+    //    const [amazonDataInserted] = await connection.execute('insert into amazon (Amazon_link, Amazon_title, count) values (?,?, 1)', [amazon.amazonLink,amazon.amazonTitle]);
+    //    let amazonId = amazonDataInserted.insertId;//get amazon_id
+    //     //JOIN TABLE(中間)//
+    //     await connection.execute('insert into article_amazon (article_id, amazon_id) values (?, ?)', [articleId, amazonId]);
+    //     }
+    //   }
+    // }
     ////insert scraped data to DB///////
+
     await browser.close();
     console.log('ブラウザを閉じました');
 
@@ -172,7 +295,11 @@ async function scrapeData() {
       console.log('データベース接続を閉じました');
     }
   }
-}
+
+
+  
+
+}//scrapingData
 
 // 1分ごとにスクレイピングを実行する
 //これいちいちスクレイピングしないで、一回したら、データをそのままDBに保持する
