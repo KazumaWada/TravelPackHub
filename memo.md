@@ -512,6 +512,73 @@ GPT:はい、おっしゃる通りです。
 修正したけど、validArticlesがundefinedとなったから、まだ修正されていない。多分、DBの部分を一緒にGPTに見せて答えを聞いたほうがいいと思う。
 or
 自分でこのコードが終わらせるまで待つ非同期の関数をかく
+8/7
+articleWithAmazonLinks:
+この関数でそもそも何をしたいのか。
+articlesを使って、amazon[amazon.linkとtitle]を取得するtitleをこの関数ないから別の関数に写っているのが危ないと思う。
+## 重要
+まずlinkを取得してから別の関数でtitleを取得したほうが絡まなくて済むと思う。
+4:47
+article.linkの全てのページではなく、最初からamazon.co.jpで始まるやつのみとってくる。
+```javascript
+const articlesWithAmazonLinks = await Promise.all(data.map(async function(article) {
+    
+    const browser = await puppeteer.launch({
+      headless: true,
+      timeout: 1000000000,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    const articlePage = await browser.newPage();
+    await articlePage.goto(article.link, { waitUntil: 'networkidle2', timeout: 100000000 });
+    //ここから新しいコード
+    const amazonLinks = await articlePage.evaluate(() => {
+       Array.from(document.querySelectorAll('a[href^="https://www.amazon.co.jp/dp/"]'));//で始まってlinkが終わっているところまでというのを追加する必要がある。
+    });
+
+    await articlePage.close();
+    await browser.close();
+
+    const amazon = amazonLinks.map(link => ({ amazonLink: link, amazonTitle: null }));
+
+    if (amazon.length > 0) {
+      return { link: article.link, title: article.title, likes: article.likes, amazon: amazon };
+    } else {
+      console.log("there are no amazon.link");
+    }
+  })
+);
+
+console.log("articlesWithAmazonLinks", articlesWithAmazonLinks);
+
+```
+続き
+# 8/7 17:00
+amazonのlink取得についてで、note.com内の全てのコンテンツをとってきていたから、amazon.co.jpのみfilterして取得するコードを書いている。
+<!-- app-1  | article.link https://note.com/okame_uk/n/nc6c419218604
+app-1  | article.link https://note.com/inahoo_/n/n4721e0d2d50b
+app-1  | article.link https://note.com/augustzzlog/n/n1085502ec238
+app-1  | article.link https://note.com/imnotkatsuma/n/n4b6ff15682aa
+app-1  | article.link https://note.com/takubeen/n/nc87d2061a470
+app-1  | article.link https://note.com/massubukuharian1/n/neb3f900c20e0
+app-1  | article.link https://note.com/wa96775/n/n3429bf5b5375
+app-1  | there are no amazon.link
+app-1  | there are no amazon.link
+app-1  | there are no amazon.link
+app-1  | there are no amazon.link
+app-1  | there are no amazon.link
+app-1  | there are no amazon.link
+app-1  | there are no amazon.link
+app-1  | articlesWithAmazonLinks [
+app-1  |   undefined,
+app-1  |   undefined,
+app-1  |   undefined,
+app-1  |   undefined,
+app-1  |   undefined,
+app-1  |   undefined,
+app-1  |   undefined
+app-1  | ] -->
+
 
 
 - ホットリロード
