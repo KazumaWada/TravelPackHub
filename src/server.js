@@ -6,6 +6,7 @@ const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const cron = require('node-cron');
 const cors = require('cors');
+const { devNull } = require('os');
 //const dotenv = require('dotenv');
 
 // 静的ファイルの提供設定
@@ -50,21 +51,28 @@ const root = "https://note.com";
 const articles = [];
 
 
-async function getTitleLinks(data, $){
-data.each((idx, el) => {
+
+//$は、検索画面
+async function getTitleLinks(scrapeEle, $){
+scrapeEle.each((idx, el) => {
   if (idx < 7) {
     const href = $(el).attr('href');
     const title = $(el).attr('title');  
     if (href) {
-      articles.push({ link: root + href, title: title, likes : null });
+      articles.push({ link: root + href,
+                      title: title,
+                      likes : null,
+                      amazon: []                  
+                    }
+                    );
     }
   }
 });
 return articles;
 }
 
-async function getLikes(data, $){
-  data.each((idx, el) => {
+async function getLikes(scrapeEle, $){
+  scrapeEle.each((idx, el) => {
     if (idx < 7 && articles[idx]) {//LOOK! 76lines
      const likes = $(el).text().trim();
      articles[idx].likes = likes; 
@@ -72,17 +80,119 @@ async function getLikes(data, $){
     });
     return articles;
 }
+//cheerioはこういう事(スクレイぷはしない)
+//const $ = cheerio.load('<h2 class="title">Hello world</h2>');
+//$('h2.title').text(); // "Hello world"
+//↓
+//cheerio.load('note.comのeach blog post')
+//$(amazonProductTitlt).text
 
-async function removeArticlesWithNoAmazon(data, $){
-  return console.log("hello from function removeArticlesWithNoAmazon");
-}
-
-async function getAmazonTitle(data, $) {
+async function getAmazonTitle(articlesLength) {//articles use for length of loop
   return console.log("hello from function getAmazonTitle")
+  const browser = await puppeteer.launch({
+    headless: 'new',//was "yes"
+    timeout: 1000000000,
+    //executablePath: '/path/to/your/chrome', // specify your Chrome/Chromium path
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  const page = await browser.newPage();
+
+for (let i = 0; i < articlesLength; i++){
+  await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 100000000 });
+  const content = await page.content();
+  //各記事の画面
+  const $ = cheerio.load(content);
+  const amazonTitle = $('strong.external-article-widget-title').text().trim()//.slice(0,12);
+  //articles[i].amazon[i].amazonTitle = amazonTitle;
+  if(!amazonTitle){
+    //いちいちpushしなくて
+    articles[i].amazon.push({amazonLinks: null,
+                             amazonTitle: "undefined",
+                             amazonImg: null
+                            })
+  }else{
+    articles[i].amazon.push({amazonLinks: null,
+                           amazonTitle: amazonTitle,
+                           amazonImg: null
+                          })
+  }
+
+
+
+  console.log("articles.amazon!", articles[0].amazon);
+  
+
+ }
+ 
+  
+
+
+ 
+}
+async function getAmazonLink(articlesLength, articles) {
+
+  const browser = await puppeteer.launch({
+    headless: 'new',//was "yes"
+    timeout: 1000000000,
+    //executablePath: '/path/to/your/chrome', // specify your Chrome/Chromium path
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  const page = await browser.newPage();
+
+for (let i = 0; i < articlesLength; i++){
+  await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 100000000 });
+  const content = await page.content();
+  //各記事の画面
+  const $ = cheerio.load(content);
+  //ここでループして、全部取得して格納してしまう。
+  const amazonLinksArray = $('a[href^="https://amzn.asia"]').map((_, el) => $(el).attr('href')).get();
+  const amazonTitlesArray = $('strong.external-article-widget-title').map((_, el) => $(el).text().trim()).get();
+  const amazonImgsArray = $('span.external-article-widget-productImage').map((_, el) => $(el).attr('style')).get();
+
+  //そのまま書いてしまうと(articles[i].amazon).がメソッドだと勘違いしてエラーになる
+  let amazonArr = articles[i].amazon;
+  console.log("articles.length before splice", articles.length);
+  //initialize
+  if(!amazonArr){
+    amazonArr = {
+      amazonLinks:[],
+      amazonTitles:[],
+      amazonImgs:[]
+    }
+
+  }
+  if(amazonLinksArray.length === 0){
+    //removed from articles later
+    amazonArr.amazonLinks = ["undefined"];
+    //articles.splice(i, 1);
+  }else{//amazon exist
+    //links
+    amazonArr.amazonLinks = amazonLinksArray;
+    //title
+    amazonArr.amazonTitles = amazonTitlesArray;
+    //Img
+    amazonArr.amazonImgs = amazonImgsArray;
+  }
+  
 }
 
-async function getAmazonLink(data, $) {
-  return console.log("hello from function getAmazonLink")
+// articles.amazon! from getAmazonLink [
+//   app-1  |   { amazonLink: null, amazonTitle: null, amazonImg: null },
+//   app-1  |   {
+//   app-1  |     amazonLink: 'https://amzn.asia/d/0431nHxd',
+//   app-1  |     amazonTitle: null,
+//   app-1  |     amazonImg: null
+//   app-1  |   }
+//   app-1  | ]
+
+console.log("articles.length after splice", articles.length);
+console.log("articles.amazon! from getAmazonLink", articles[0].amazon);
+console.log("articles.amazon! from getAmazonLink", articles[1].amazon);
+console.log("articles.amazon! from getAmazonLink", articles[2].amazon);
+console.log("articles.amazon! from getAmazonLink", articles[3].amazon);
+console.log("articles.amazon! from getAmazonLink", articles[4].amazon);
+console.log("articles.amazon! from getAmazonLink", articles[5].amazon);
+
 }
 
 async function getAmazonImg(data, $) {
@@ -162,29 +272,25 @@ async function scrapeData() {
     //define parts you want to scrape//
     const titlesAndLinks = $("a.a-link.m-largeNoteWrapper__link.fn");
     const likes = $("span.text-text-secondary");
-
     //scrape note.com// 
     await getTitleLinks(titlesAndLinks, $) //記事内のtitleをとる
     await getLikes(likes, $);//記事内のlikesをとる
+    console.log("articles->",articles);
     console.log("articles->",articles[0].link);
+    console.log("articles.length->",articles.length);
+    const articlesLength = articles.length;
     //こっからは、$が各記事内になるから、新しく$を定義する。remove,amazonも同じ$を使う。
 
-    //access each blog posts//今度はgotoのurlをループさせる必要がある。
-    // const page = await browser.newPage();
-    // await page.goto(url, { waitUntil: 'networkidle2', timeout: 100000000 });
-    // console.log('ページにアクセスしました');
-    // const content = await page.content();
-    // const $ = cheerio.load(content);
-
-    const amazonProductTitle = $("strong.external-article-widget-title");//.text
+    //each blog-post's element
+    //const amazonProductTitle = $("strong.external-article-widget-title");//.text
     const ammazonProductLink = $('a.external-article-widget-image');//.href
     const amazonProductImg = $('span.external-article-widget-productImage');//styleが画像のリンクにマッチしたら
 
-    await removeArticlesWithNoAmazon(amazonProductTitle,articles);//$にamaProが存在するか
-    await getAmazonTitle(amazonProductTitle, $)//記事内のaタグのamazonをとる
-    await getAmazonLink(ammazonProductLink, $)//↑のaタグからtitleを抜き出す
+    //await removeArticlesWithNoAmazon(amazonProductTitle,articles);//$にamaProが存在するか
+    
+    await getAmazonTitle(articlesLength)//記事内のaタグのamazonをとる
+    await getAmazonLink(articlesLength, articles)//↑のaタグからtitleを抜き出す
     await getAmazonImg(amazonProductImg, $)//↑のaタグからtitleを抜き出す
-
     //DB
     await insertArticlesAndAmazonsToDB(connection, validArticlesAndAmazon);
   
@@ -335,4 +441,4 @@ app.listen(PORT, () => {
     //   app-1  |   }
     //   app-1  | ]
 
-    
+
