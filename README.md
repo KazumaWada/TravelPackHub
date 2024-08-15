@@ -1,7 +1,8 @@
 # TravelPackHub
-## current problem
-- amazonLinksが全て2つ格納されてしまっている。
-- 記事内のリンクを全て取得できていない
+## TODO
+- nodedemon on docker
+- debuggar on docker
+- node module volume mount on docker
 
 
 ## setup
