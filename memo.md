@@ -663,10 +663,18 @@ const urls = ['http://example.com/page1', 'http://example.com/page2'];
 scrapeData(urls);
 このようにすることで、amazon 配列に新しいオブジェクトを追加し、amazonTitle を異なるURLごとに追加することができます。
 
-
+articles[i].amazon[i].amazonTitle
+articles[i].amazon.amazonTitle[i]
 
 ```
+        </a></div> <span class="o-noteContentHeader__date" data-v-dad7cd46><time datetime="2024-07-31T15:26:37.000+09:00" data-v-dad7cd46>2024年7月31日 15:26</time></span> <!----></div> <!----> <!----> <div class="o-noteContentHeader__status" data-v-dad7cd46><!---->  <!----></div></div></div> <div data-name="body" class="note-common-styles__textnote-body" data-v-087300c1><p name="e2ca4eb2-a93d-4d7a-b5c2-6b427eae2bee" id="e2ca4eb2-a93d-4d7a-b5c2-6b427eae2bee">今回はカナダ（バンクーバー）でワーホリしたときに、「日本から持ってきて良かった…！」と思ったものがいくつかあったのでご紹介します。</p><p name="e53b1b4b-83e5-4358-b367-326e1aa6d214" id="e53b1b4b-83e5-4358-b367-326e1aa6d214"><br></p><h3 name="6d42979f-cd76-48c0-a55b-7e25fcc2aa3d" id="6d42979f-cd76-48c0-a55b-7e25fcc2aa3d">１．慣れ親しんだ日本の調味料</h3><p name="e7902c80-0568-429f-8a61-d852b32e945b" id="e7902c80-0568-429f-8a61-d852b32e945b">日本から持って行った調味料はいくつかあって、その中でも<br>・ほんだし<br>・地元の醤油<br>は本当に持って行って大正解でした。</p><p name="f43ef6f3-d309-4f6d-a80f-30ab81e67e87" id="f43ef6f3-d309-4f6d-a80f-30ab81e67e87">味にこだわらなければ現地のスーパーで安いものは安いし、味を求めるならば日本の食品を扱うお店でも買えるのですが、そこで買うとたっっっかい…！</p><p name="d944f1fd-9c9c-4b74-ba1c-7e659333178b" id="d944f1fd-9c9c-4b74-ba1c-7e659333178b">特に私は九州の出身なので九州の甘めの醤油がいい！というこだわりから日本から地元の醤油を持ち込みました。</p><p name="1896a503-88eb-4a2c-bffc-87f45f9d4aa8" id="1896a503-88eb-4a2c-bffc-87f45f9d4aa8">スーパーで割引のお寿司を買って地元の醤油をつけて食べたときは号泣寸前でした。</p><p name="a9c63d0f-bb35-47a7-9a7f-7c23112a3ec5" id="a9c63d0f-bb35-47a7-9a7f-7c23112a3ec5"><br></p><h3 name="e2a03908-ec23-454d-b018-7e1ef453d280" id="e2a03908-ec23-454d-b018-7e1ef453d280">２．フリーズドライ味噌汁</h3><p name="cb403926-bb8e-4e53-9f23-f0ee4a8df68e" id="cb403926-bb8e-4e53-9f23-f0ee4a8df68e">日本の味が恋しくなったときに何度も救われました。</p><p name="a869951e-1007-4f6c-9111-7dfd24ea1ebd" id="a869951e-1007-4f6c-9111-7dfd24ea1ebd">パッキングのとき、大きいパッケージのままキャリーケースに入れるとかなり嵩張って場所をとってしまいます。パッケージから出してしまってバラにしてから布ものの間に挟んで。フリーズドライなので中身は潰れてしまっても大丈夫！</p><p name="dabafee0-bf0d-4db5-a9af-d9e0ea3c1403" id="dabafee0-bf0d-4db5-a9af-d9e0ea3c1403">私は自分でも用意してましたが、渡航前に友達が選別にくれて嬉しかったのを覚えてます。</p><p name="e242942d-e403-4fa0-b9f0-df293d84d41a" id="e242942d-e403-4fa0-b9f0-df293d84d41a">今後海外渡航する人がいたら選別としてフリーズドライ味噌汁を贈ろうかな！</p><p name="4dc54994-8aef-4a1b-93d2-bffdee539d95" id="4dc54994-8aef-4a1b-93d2-bffdee539d95"><br></p><h3 name="f523b1aa-823f-4e39-be1f-8243ec033b32" id="f523b1aa-823f-4e39-be1f-8243ec033b32">３．ヨガマット</h3><p name="b2acc1d5-6301-4ec0-a8e7-0325b3f4ed89" id="b2acc1d5-6301-4ec0-a8e7-0325b3f4ed89">ホームステイ先やシェアハウスでストレッチやヨガをしたかったので渡航前にAmazonで購入しました。</p><figure name="4158c5ce-20e1-4694-a6de-b8f2d2fb38fe" id="4158c5ce-20e1-4694-a6de-b8f2d2fb38fe" data-src="https://amzn.asia/d/0431nHxd" data-identifier="null" embedded-service="external-article" embedded-content-key="embee0c9da2810a"><div data-name="embedContainer"><div data-embed-service="external-article"><span><div class="external-article-widget external-article-widget--type_shopping">
+<a href="https://amzn.asia/d/0431nHxd" rel="noopener noreferrer nofollow" target="_blank">
+<strong class="external-article-widget-title">
+【Amazon.co.jp限定】プリマソーレ ヨガマット 折りたたみ 4mm 折畳み トレーニングマット エクササイズマット ストレッチマット 筋トレマット フィットネス ピラティス PVC アースブラウン
+</strong>
+<em class="external-article-widget-description">
 
+</em>
 
 - ホットリロード
 - Amazon.imgを取得()
