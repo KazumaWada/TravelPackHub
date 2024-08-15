@@ -50,8 +50,6 @@ let hasScraped = false; // Flag to check if scraping has been done
 const root = "https://note.com";
 const articles = [];
 
-
-
 //$は、検索画面
 async function getTitleLinks(scrapeEle, $){
 scrapeEle.each((idx, el) => {
@@ -80,56 +78,8 @@ async function getLikes(scrapeEle, $){
     });
     return articles;
 }
-//cheerioはこういう事(スクレイぷはしない)
-//const $ = cheerio.load('<h2 class="title">Hello world</h2>');
-//$('h2.title').text(); // "Hello world"
-//↓
-//cheerio.load('note.comのeach blog post')
-//$(amazonProductTitlt).text
 
-async function getAmazonTitle(articlesLength) {//articles use for length of loop
-  return console.log("hello from function getAmazonTitle")
-  const browser = await puppeteer.launch({
-    headless: 'new',//was "yes"
-    timeout: 1000000000,
-    //executablePath: '/path/to/your/chrome', // specify your Chrome/Chromium path
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
-  const page = await browser.newPage();
-
-for (let i = 0; i < articlesLength; i++){
-  await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 100000000 });
-  const content = await page.content();
-  //各記事の画面
-  const $ = cheerio.load(content);
-  const amazonTitle = $('strong.external-article-widget-title').text().trim()//.slice(0,12);
-  //articles[i].amazon[i].amazonTitle = amazonTitle;
-  if(!amazonTitle){
-    //いちいちpushしなくて
-    articles[i].amazon.push({amazonLinks: null,
-                             amazonTitle: "undefined",
-                             amazonImg: null
-                            })
-  }else{
-    articles[i].amazon.push({amazonLinks: null,
-                           amazonTitle: amazonTitle,
-                           amazonImg: null
-                          })
-  }
-
-
-
-  console.log("articles.amazon!", articles[0].amazon);
-  
-
- }
- 
-  
-
-
- 
-}
-async function getAmazonLink(articlesLength, articles) {
+async function getAmazon(articlesLength, articles) {
 
   const browser = await puppeteer.launch({
     headless: 'new',//was "yes"
@@ -148,10 +98,8 @@ for (let i = 0; i < articlesLength; i++){
   const amazonLinksArray = $('a[href^="https://amzn.asia"]').map((_, el) => $(el).attr('href')).get();
   const amazonTitlesArray = $('strong.external-article-widget-title').map((_, el) => $(el).text().trim()).get();
   const amazonImgsArray = $('span.external-article-widget-productImage').map((_, el) => $(el).attr('style')).get();
-
   //そのまま書いてしまうと(articles[i].amazon).がメソッドだと勘違いしてエラーになる
   let amazonArr = articles[i].amazon;
-  console.log("articles.length before splice", articles.length);
   //initialize
   if(!amazonArr){
     amazonArr = {
@@ -159,11 +107,10 @@ for (let i = 0; i < articlesLength; i++){
       amazonTitles:[],
       amazonImgs:[]
     }
-
   }
   if(amazonLinksArray.length === 0){
     //removed from articles later
-    amazonArr.amazonLinks = ["undefined"];
+    amazonArr.amazonLinks = "undefined";//今は仮でundefinedにしているだけ。後でarticles[i]配列を削除
     //articles.splice(i, 1);
   }else{//amazon exist
     //links
@@ -171,32 +118,27 @@ for (let i = 0; i < articlesLength; i++){
     //title
     amazonArr.amazonTitles = amazonTitlesArray;
     //Img
-    amazonArr.amazonImgs = amazonImgsArray;
+    //'background-image: url(https://m.media-amazon.com/images/I/51sHwFcHYdL._SL500_.jpg);'となっているから余計なものを取り除く
+    amazonArr.amazonImgs = cutStuffWeDontNeed(amazonImgsArray);
+    amazonArr.amazonTitles = amazonTitlesArray;
   }
   
 }
-
-// articles.amazon! from getAmazonLink [
-//   app-1  |   { amazonLink: null, amazonTitle: null, amazonImg: null },
-//   app-1  |   {
-//   app-1  |     amazonLink: 'https://amzn.asia/d/0431nHxd',
-//   app-1  |     amazonTitle: null,
-//   app-1  |     amazonImg: null
-//   app-1  |   }
-//   app-1  | ]
-
-console.log("articles.length after splice", articles.length);
-console.log("articles.amazon! from getAmazonLink", articles[0].amazon);
-console.log("articles.amazon! from getAmazonLink", articles[1].amazon);
-console.log("articles.amazon! from getAmazonLink", articles[2].amazon);
-console.log("articles.amazon! from getAmazonLink", articles[3].amazon);
-console.log("articles.amazon! from getAmazonLink", articles[4].amazon);
-console.log("articles.amazon! from getAmazonLink", articles[5].amazon);
-
+return articles;
 }
 
-async function getAmazonImg(data, $) {
-  return console.log("hello from function getAmazonImg")
+
+const validAmazonImgsArray = [];
+async function cutStuffWeDontNeed(arr){
+  for(let i=0; i<arr.length; i++){
+    const urlStart = arr[i].indexOf('url(') + 4; // 'url(' の後ろの位置
+    const urlEnd = arr[i].indexOf(')', urlStart); // ')' の位置を探す
+    const url = arr[i].substring(urlStart, urlEnd);
+
+    if(!validAmazonImgsArray.includes(url))
+    validAmazonImgsArray.push(url);
+  }
+  console.log("validAmazonImgsArray",validAmazonImgsArray);
 }
 
 async function insertArticlesAndAmazonsToDB(connection, data) {
@@ -272,31 +214,65 @@ async function scrapeData() {
     //define parts you want to scrape//
     const titlesAndLinks = $("a.a-link.m-largeNoteWrapper__link.fn");
     const likes = $("span.text-text-secondary");
+
     //scrape note.com// 
     await getTitleLinks(titlesAndLinks, $) //記事内のtitleをとる
     await getLikes(likes, $);//記事内のlikesをとる
-    console.log("articles->",articles);
-    console.log("articles->",articles[0].link);
-    console.log("articles.length->",articles.length);
     const articlesLength = articles.length;
-    //こっからは、$が各記事内になるから、新しく$を定義する。remove,amazonも同じ$を使う。
+    //こっからは、$が各記事内になるから、新しく$を定義する。remove,amazonも同じ$を使う。    
+    await getAmazon(articlesLength, articles)//↑のaタグからtitleを抜き出す
 
-    //each blog-post's element
-    //const amazonProductTitle = $("strong.external-article-widget-title");//.text
-    const ammazonProductLink = $('a.external-article-widget-image');//.href
-    const amazonProductImg = $('span.external-article-widget-productImage');//styleが画像のリンクにマッチしたら
+    //validArticles: included article and amazon
+    const validArticles = await getAmazon(articlesLength, articles);
+    console.log("validArticles!->", validArticles);
 
-    //await removeArticlesWithNoAmazon(amazonProductTitle,articles);//$にamaProが存在するか
     
-    await getAmazonTitle(articlesLength)//記事内のaタグのamazonをとる
-    await getAmazonLink(articlesLength, articles)//↑のaタグからtitleを抜き出す
-    await getAmazonImg(amazonProductImg, $)//↑のaタグからtitleを抜き出す
+
+    //remove article about undefined of amazon
+    const dataInsertToDB = [];
+    for (let i = 0; i < validArticles.length; i++) {
+      // undefinedだったら、配列に格納しない。
+      if (validArticles[i].amazon && validArticles[i].amazon.amazonLinks && !validArticles[i].amazon.amazonLinks.includes("undefined")) {
+        dataInsertToDB.push(validArticles[i]);
+      }
+    }
+    console.log("これが知りたいdataInsertToDB->", dataInsertToDB);
+    
+
+
+    // app-1  | dataInsertToDB-> [
+    //   app-1  |   {
+    //   app-1  |     link: 'https://note.com/inahoo_/n/n4721e0d2d50b',
+    //   app-1  |     title: 'カナダワーホリ🇨🇦日本から持って行って海外生活を支えてくれたものたち',
+    //   app-1  |     likes: '22',
+    //   app-1  |     amazon: [
+    //   app-1  |       amazonLinks: [Array],
+    //   app-1  |       amazonTitles: [Array],
+    //   app-1  |       amazonImgs: [Array]
+    //   app-1  |     ]
+    //   app-1  |   },
+    //   app-1  |   {
+    //   app-1  |     link: 'https://note.com/massubukuharian1/n/neb3f900c20e0',
+    //   app-1  |     title: '【海外移住】日本から持ってきて良かったもの',
+    //   app-1  |     likes: '46',
+    //   app-1  |     amazon: [
+    //   app-1  |       amazonLinks: [Array],
+    //   app-1  |       amazonTitles: [Array],
+    //   app-1  |       amazonImgs: [Array]
+    //   app-1  |     ]
+    //   app-1  |   }
+    //   app-1  | ]
+      
+    for(let i=0; i<dataInsertToDB.length; i++){
+      console.log("dataInsertToDB[i].amazon.amazonLinks",dataInsertToDB[i].amazon.amazonLinks);
+      console.log("dataInsertToDB[i].amazon.amazonTitles", dataInsertToDB[i].amazon.amazonTitles);
+      console.log("dataInsertToDB[i].amazon.amazonImgs", dataInsertToDB[i].amazon.amazonImgs);
+    }
+
     //DB
-    await insertArticlesAndAmazonsToDB(connection, validArticlesAndAmazon);
-  
+    //await insertArticlesAndAmazonsToDB(connection, validArticlesAndAmazon);
     await browser.close();
     console.log('ブラウザを閉じました');
-
     hasScraped = true;
   } catch (err) {
     console.error('スクレイプ中にエラーが発生しました:', err);

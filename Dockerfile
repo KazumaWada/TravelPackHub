@@ -52,7 +52,6 @@ RUN npm install
 
 
 
-
 # アプリケーションのソースコードをコピー
 COPY . .
 

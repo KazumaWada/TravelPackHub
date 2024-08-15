@@ -16,7 +16,8 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    command: sh -c "npm install && npm start"
+    # doocker compose upをしたら実行されるコマンド
+    command: sh -c "npm install && npm start" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
 
   db:
     image: mysql:8.0
