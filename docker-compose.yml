@@ -6,6 +6,7 @@ services:
     build: .
     ports:
       - "3000:3000"  # Node.jsアプリケーションがリッスンするポート
+      - "9229:9229"  # debug mode
     depends_on:
       - db
     environment:
@@ -16,8 +17,8 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    # doocker compose upをしたら実行されるコマンド
-    command: sh -c "npm install && npm start" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
+    # npm installとdebugをミックスしている。
+    command: sh -c "npm install && npm run debug" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
 
   db:
     image: mysql:8.0

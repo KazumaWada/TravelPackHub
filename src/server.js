@@ -138,7 +138,11 @@ async function cutStuffWeDontNeed(arr){
     if(!validAmazonImgsArray.includes(url))
     validAmazonImgsArray.push(url);
   }
-  console.log("validAmazonImgsArray",validAmazonImgsArray);
+    console.log("validAmazonImgsArray",validAmazonImgsArray);
+
+  console.log('About to pause execution');
+  debugger; // Execution will pause here when DevTools is open
+  console.log('Resumed execution');
 }
 
 async function insertArticlesAndAmazonsToDB(connection, data) {
@@ -187,7 +191,7 @@ async function insertArticlesAndAmazonsToDB(connection, data) {
 // SCRAPING FROM "note.com"
 async function scrapeData() {
   if (hasScraped) {
-    console.log('スクレイピングはすでに実行されました');
+    console.log('スクレイピングはすでに実行されました is nodemon works?');
     return;
   }
   

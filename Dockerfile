@@ -5,6 +5,8 @@ FROM --platform=linux/amd64 node:18
 # アプリケーションディレクトリを作成
 WORKDIR /app
 
+RUN npm install nodemon
+
 # package.jsonとpackage-lock.jsonをコピー
 COPY package*.json ./
 
@@ -55,9 +57,15 @@ RUN npm install
 # アプリケーションのソースコードをコピー
 COPY . .
 
-# アプリケーションを起動
-CMD ["npm", "start"]
+# "production like" command
+CMD ["npm", "start"] 
+# development command. go to package.json and see "scripts"
+#CMD ["npm", "run", "dev"]<-already declar in docker-compose.yml
+# so why in dockerfile i need to declare "npm run start"->dockerfile: production mode
+# and docker compose file is "npm run dev"->docker-compose.yml: development mode
 
 
 # ポートを公開
-EXPOSE 3000
+#EXPOSE 3000
+#debug mode 
+EXPOSE 3000 9229
