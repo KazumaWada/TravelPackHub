@@ -1,3 +1,4 @@
+//chrome://inspect/
 const express = require('express');
 const mysql = require('mysql2/promise');
 const path = require('path');
@@ -45,7 +46,8 @@ async function createConnection() {
 }
 
 //global
-const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E3%83%AF%E3%83%BC%E3%83%9B%E3%83%AA%E3%80%80%E3%82%A2%E3%83%9E%E3%82%BE%E3%83%B3&context=note&mode=search";
+//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E3%83%AF%E3%83%BC%E3%83%9B%E3%83%AA%E3%80%80%E3%82%A2%E3%83%9E%E3%82%BE%E3%83%B3&context=note&mode=search";
+const url = "https://note.com/search?q=%E4%BD%90%E3%80%85%E6%9C%A8%E5%85%B8%E5%A3%AB%20Fumio%20Sasaki&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 const root = "https://note.com";
 const articles = [];
@@ -59,8 +61,7 @@ scrapeEle.each((idx, el) => {
     if (href) {
       articles.push({ link: root + href,
                       title: title,
-                      likes : null,
-                      amazon: []                  
+                      likes : null,              
                     }
                     );
     }
@@ -79,71 +80,47 @@ async function getLikes(scrapeEle, $){
     return articles;
 }
 
-async function getAmazon(articlesLength, articles) {
+async function getAmazon(articles) {
 
   const browser = await puppeteer.launch({
     headless: 'new',//was "yes"
     timeout: 1000000000,
-    //executablePath: '/path/to/your/chrome', // specify your Chrome/Chromium path
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
 
-for (let i = 0; i < articlesLength; i++){
+for (let i = 0; i < articles.length; i++){
   await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 100000000 });
   const content = await page.content();
   //各記事の画面
   const $ = cheerio.load(content);
-  //ここでループして、全部取得して格納してしまう。
-  const amazonLinksArray = $('a[href^="https://amzn.asia"]').map((_, el) => $(el).attr('href')).get();
-  const amazonTitlesArray = $('strong.external-article-widget-title').map((_, el) => $(el).text().trim()).get();
-  const amazonImgsArray = $('span.external-article-widget-productImage').map((_, el) => $(el).attr('style')).get();
-  //そのまま書いてしまうと(articles[i].amazon).がメソッドだと勘違いしてエラーになる
-  let amazonArr = articles[i].amazon;
+  //get amazonLink
+  const amazonLinksArray = $('a[href^="https://amzn"]').attr('href')
+  //get amazonTitle
+  const amazonTitlesArray = $('strong.external-article-widget-title').text().trim();
+  //get amazonImg
+  const amazonImgsArray = $('span.external-article-widget-productImage').attr('style');
+
   //initialize
-  if(!amazonArr){
-    amazonArr = {
-      amazonLinks:[],
-      amazonTitles:[],
-      amazonImgs:[]
-    }
+  if(!articles[i].amazon){
+    articles[i].amazon = {
+      amazonLinksArray:[],
+      amazonTitlesArray:[],
+      amazonImgsArray:[]
   }
-  if(amazonLinksArray.length === 0){
-    //removed from articles later
-    amazonArr.amazonLinks = "undefined";//今は仮でundefinedにしているだけ。後でarticles[i]配列を削除
-    //articles.splice(i, 1);
-  }else{//amazon exist
-    //links
-    amazonArr.amazonLinks = amazonLinksArray;
-    //title
-    amazonArr.amazonTitles = amazonTitlesArray;
-    //Img
-    //'background-image: url(https://m.media-amazon.com/images/I/51sHwFcHYdL._SL500_.jpg);'となっているから余計なものを取り除く
-    amazonArr.amazonImgs = cutStuffWeDontNeed(amazonImgsArray);
-    amazonArr.amazonTitles = amazonTitlesArray;
   }
-  
+  //push
+  articles[i].amazon.amazonLinksArray.push(amazonLinksArray);
+  articles[i].amazon.amazonTitlesArray.push(amazonTitlesArray);
+  articles[i].amazon.amazonImgsArray.push(amazonImgsArray);
 }
+console.log("articles",articles);
+debugger;
 return articles;
 }
 
 
-const validAmazonImgsArray = [];
-async function cutStuffWeDontNeed(arr){
-  for(let i=0; i<arr.length; i++){
-    const urlStart = arr[i].indexOf('url(') + 4; // 'url(' の後ろの位置
-    const urlEnd = arr[i].indexOf(')', urlStart); // ')' の位置を探す
-    const url = arr[i].substring(urlStart, urlEnd);
 
-    if(!validAmazonImgsArray.includes(url))
-    validAmazonImgsArray.push(url);
-  }
-    console.log("validAmazonImgsArray",validAmazonImgsArray);
-
-  console.log('About to pause execution');
-  debugger; // Execution will pause here when DevTools is open
-  console.log('Resumed execution');
-}
 
 async function insertArticlesAndAmazonsToDB(connection, data) {
   console.log("insertArticlesAndAmazonsToDB発火")
@@ -222,12 +199,10 @@ async function scrapeData() {
     //scrape note.com// 
     await getTitleLinks(titlesAndLinks, $) //記事内のtitleをとる
     await getLikes(likes, $);//記事内のlikesをとる
-    const articlesLength = articles.length;
-    //こっからは、$が各記事内になるから、新しく$を定義する。remove,amazonも同じ$を使う。    
-    await getAmazon(articlesLength, articles)//↑のaタグからtitleを抜き出す
+    await getAmazon(articles)//↑のaタグからtitleを抜き出す
 
     //validArticles: included article and amazon
-    const validArticles = await getAmazon(articlesLength, articles);
+    const validArticles = await getAmazon(articles);
     console.log("validArticles!->", validArticles);
 
     
@@ -241,37 +216,7 @@ async function scrapeData() {
       }
     }
     console.log("これが知りたいdataInsertToDB->", dataInsertToDB);
-    
-
-
-    // app-1  | dataInsertToDB-> [
-    //   app-1  |   {
-    //   app-1  |     link: 'https://note.com/inahoo_/n/n4721e0d2d50b',
-    //   app-1  |     title: 'カナダワーホリ🇨🇦日本から持って行って海外生活を支えてくれたものたち',
-    //   app-1  |     likes: '22',
-    //   app-1  |     amazon: [
-    //   app-1  |       amazonLinks: [Array],
-    //   app-1  |       amazonTitles: [Array],
-    //   app-1  |       amazonImgs: [Array]
-    //   app-1  |     ]
-    //   app-1  |   },
-    //   app-1  |   {
-    //   app-1  |     link: 'https://note.com/massubukuharian1/n/neb3f900c20e0',
-    //   app-1  |     title: '【海外移住】日本から持ってきて良かったもの',
-    //   app-1  |     likes: '46',
-    //   app-1  |     amazon: [
-    //   app-1  |       amazonLinks: [Array],
-    //   app-1  |       amazonTitles: [Array],
-    //   app-1  |       amazonImgs: [Array]
-    //   app-1  |     ]
-    //   app-1  |   }
-    //   app-1  | ]
-      
-    for(let i=0; i<dataInsertToDB.length; i++){
-      console.log("dataInsertToDB[i].amazon.amazonLinks",dataInsertToDB[i].amazon.amazonLinks);
-      console.log("dataInsertToDB[i].amazon.amazonTitles", dataInsertToDB[i].amazon.amazonTitles);
-      console.log("dataInsertToDB[i].amazon.amazonImgs", dataInsertToDB[i].amazon.amazonImgs);
-    }
+  
 
     //DB
     //await insertArticlesAndAmazonsToDB(connection, validArticlesAndAmazon);
@@ -363,62 +308,21 @@ app.listen(PORT, () => {
     //   }
     // }
 
-    // app-1  | validArticlesAndAmazonだよ! [
-    //   app-1  |   {
-    //   app-1  |     "link": "https://note.com/mimi_latte/n/nfee47f94ad90",
-    //   app-1  |     "title": "【ワーホリ準備】渡航前持ち物リスト完全版",
-    //   app-1  |     "likes": "7",
-    //   app-1  |     "amazon": [
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B007E66HHS",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B007E66HHS",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B07ZGV9W29",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B07ZGV9W29",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B07BQHCLPF",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B07BQHCLPF",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B07F83XM12",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B07F83XM12",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B00J5ARSHY",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B00J5ARSHY",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B00CP3F6JK",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       },
-    //   app-1  |       {
-    //   app-1  |         "amazonLink": "https://www.amazon.co.jp/dp/B00CP3F6JK",
-    //   app-1  |         "amazonTitle": {}
-    //   app-1  |       }
-    //   app-1  |     ]
-    //   app-1  |   }
-    //   app-1  | ]
 
-
+   
+  //   {
+  //     "link": "https://note.com/minimalism/n/naa35241a0671",
+  //     "title": "pha『パーティーが終わって、中年が始まる』　〜ピーク過ぎの最高傑作〜",
+  //     "likes": "103",
+  //     "amazon": {
+  //         "amazonLinksArray": [
+  //             "https://amzn.to/3KBq9C1"
+  //         ],
+  //         "amazonTitlesArray": [
+  //             "パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる"
+  //         ],
+  //         "amazonImgsArray": [
+  //             "background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);"
+  //         ]
+  //     }
+  // }
