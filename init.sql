@@ -10,9 +10,9 @@ CREATE TABLE amazon (
 CREATE TABLE articles (
     id INT AUTO_INCREMENT PRIMARY KEY, -- AUTO_INCREMENTでidは自動挿入されている。
     Article_link TEXT NOT NULL,
-    Title TEXT NOT NULL,
-    Likes INT NOT NULL
-);
+    Article_title TEXT NOT NULL,
+    Article_likes INT NOT NULL
+)CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 
 -- 中間テーブル
@@ -24,5 +24,5 @@ CREATE TABLE article_amazon (
     FOREIGN KEY (article_id) REFERENCES articles(id),
     FOREIGN KEY (amazon_id) REFERENCES amazon_links(id),
     PRIMARY KEY (article_id, amazon_id)
-);
+)CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

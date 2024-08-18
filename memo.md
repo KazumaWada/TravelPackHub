@@ -676,8 +676,44 @@ articles[i].amazon.amazonTitle[i]
 
 </em>
 
-- ホットリロード
-- Amazon.imgを取得()
-- DBの修正(ADD: amazon.title,amazon.img)
+- ホットリロードdone
+- Amazon.imgを取得()done
+- DBの修正(ADD: amazon.title,amazon.img)done
 - Amazon.link + 自分のID
-- リファクタリング()
+- リファクタリング()done
+- DB文字化け
+
+mysql> status
+サーバーシステム変数という。
+--------------
+mysql  Ver 8.0.39 for Linux on aarch64 (MySQL Community Server - GPL)
+
+Connection id:		9
+Current database:	mydatabase
+Current user:		root@localhost
+SSL:			Not in use
+Current pager:		stdout
+Using outfile:		''
+Using delimiter:	;
+Server version:		8.0.39 MySQL Community Server - GPL
+Protocol version:	10
+Connection:		Localhost via UNIX socket
+Server characterset:	utf8mb4
+Db     characterset:	utf8mb4
+Client characterset:	latin1
+Conn.  characterset:	latin1
+UNIX socket:		/var/run/mysqld/mysqld.sock
+Binary data as:		Hexadecimal
+Uptime:			45 sec
+
+Threads: 3  Questions: 13  Slow queries: 0  Opens: 147  Flush tables: 3  Open tables: 66  Queries per second avg: 0.288
+--------------
+
+
+
+"Client characterset:	latin1"
+mysql内でのclientとserverの役割がそれぞれがある。
+現時点で、clientがlatinを送信->それを受け取るserverがutfになっている。
+"Conn.  characterset:	latin1"
+mysqlが接続で使用している文字セット
+サーバーと通信するときに使用。

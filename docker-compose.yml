@@ -15,6 +15,7 @@ services:
       - DB_PASSWORD=example
       - DB_NAME=mydatabase
     volumes:
+    #- <ホストのパス>:<コンテナのパス>
       - .:/app
       - /app/node_modules
     # npm installとdebugをミックスしている。
@@ -30,7 +31,13 @@ services:
       - "3306:3306"  
     volumes:
       - db_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # tableの内容のiniなど(rootにあるけど、dockerをbuildするときにこのdirに書かすようにしている。)
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+        # root@d0a83b8f94d1:/app# ls /etc/mysql/
+        # my.cnf->pathはok!
+      - ./my.cnf:/etc/mysql/my.cnf #文字化け対策
+      #docker-entrypoint-initdb.d: dockerが起動時に実行されるdir.公式で決まっている。
+      #初期化やsetupするファイルがある場合が多い。↓
+      - ./init.command.sql:/docker-entrypoint-initdb.d/init.sql #password手動入力スキップ
 
 
 volumes:

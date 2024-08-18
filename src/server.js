@@ -112,55 +112,68 @@ for (let i = 0; i < articles.length; i++){
   //push
   articles[i].amazon.amazonLinksArray.push(amazonLinksArray);
   articles[i].amazon.amazonTitlesArray.push(amazonTitlesArray);
-  articles[i].amazon.amazonImgsArray.push(amazonImgsArray);
+ articles[i].amazon.amazonImgsArray.push(amazonImgsArray);
 }
-console.log("articles",articles);
-debugger;
 return articles;
 }
 
 
 
+  //   {
+  //     "link": "https://note.com/minimalism/n/naa35241a0671",
+  //     "title": "pha『パーティーが終わって、中年が始まる』　〜ピーク過ぎの最高傑作〜",
+  //     "likes": "103",
+  //     "amazon": {
+  //         "amazonLinksArray": [
+  //             "https://amzn.to/3KBq9C1"
+  //         ],
+  //         "amazonTitlesArray": [
+  //             "パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる"
+  //         ],
+  //         "amazonImgsArray": [
+  //             "background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);"
+  //         ]
+  //     }
+  // }
 
-async function insertArticlesAndAmazonsToDB(connection, data) {
-  console.log("insertArticlesAndAmazonsToDB発火")
-  for (const article of data) {
+async function insertArticlesAndAmazonsToDB(connection, articles) {
+  for (const article of articles) {
     // ARTICLE TABLE
     const [articleDataInserted] = await connection.execute(
-      'INSERT INTO articles (Article_link, Title, Likes) VALUES (?, ?, ?)', 
-      [article.link, article.title, article.likes]
+      'INSERT INTO articles (Article_link, Article_title, Article_likes) VALUES (?, ?, ?)', 
+      [article.link, Buffer.from(article.title, 'utf8').toString(), article.likes]//文字化け対策
     );
     const articleId = articleDataInserted.insertId; // get article_id
 
     // AMAZON TABLE
-    for (const amazon of article.amazon) {
-      const [amazonLinkAndTitle] = await connection.execute(
-        'SELECT id, count FROM amazon WHERE Amazon_link = ?', 
-        [amazon.amazonLink]
-      ); // check if amazon link exists
+    // for (const amazon of article.amazon) {
+    //   const [amazonLinkAndTitle] = await connection.execute(
+    //     'SELECT id, count FROM amazon WHERE Amazon_link = ?', 
+    //     [amazon.amazonLink]
+    //   ); // check if amazon link exists
 
-      if (amazonLinkAndTitle.length > 0) {
-        // if amazon link exists, increment count
-        const amazonId = amazonLinkAndTitle[0].id;
-        await connection.execute(
-          'UPDATE amazon SET count = count + 1 WHERE id = ?', 
-          [amazonId]
-        );
-      } else {
-        // if amazon link doesn't exist, insert new record
-        const [amazonDataInserted] = await connection.execute(
-          'INSERT INTO amazon (Amazon_link, Amazon_title, count) VALUES (?, ?, 1)', 
-          [amazon.amazonLink, amazon.amazonTitle]
-        );
-        const amazonId = amazonDataInserted.insertId; // get amazon_id
-        // JOIN TABLE (中間)
-        await connection.execute(
-          'INSERT INTO article_amazon (article_id, amazon_id) VALUES (?, ?)', 
-          [articleId, amazonId]
-        );
-      }
-    }
-  }
+    //   if (amazonLinkAndTitle.length > 0) {
+    //     // if amazon link exists, increment count
+    //     const amazonId = amazonLinkAndTitle[0].id;
+    //     await connection.execute(
+    //       'UPDATE amazon SET count = count + 1 WHERE id = ?', 
+    //       [amazonId]
+    //     );
+    //   } else {
+    //     // if amazon link doesn't exist, insert new record
+    //     const [amazonDataInserted] = await connection.execute(
+    //       'INSERT INTO amazon (Amazon_link, Amazon_title, count) VALUES (?, ?, 1)', 
+    //       [amazon.amazonLink, amazon.amazonTitle]
+    //     );
+    //     const amazonId = amazonDataInserted.insertId; // get amazon_id
+    //     // JOIN TABLE (中間)
+    //     await connection.execute(
+    //       'INSERT INTO article_amazon (article_id, amazon_id) VALUES (?, ?)', 
+    //       [articleId, amazonId]
+    //     );
+    //   }
+    // }
+  }//for
 }
 
 
@@ -192,34 +205,19 @@ async function scrapeData() {
     const content = await page.content();
     const $ = cheerio.load(content);
 
-    //define parts you want to scrape//
     const titlesAndLinks = $("a.a-link.m-largeNoteWrapper__link.fn");
     const likes = $("span.text-text-secondary");
 
-    //scrape note.com// 
+    //scrape from blog site// 
     await getTitleLinks(titlesAndLinks, $) //記事内のtitleをとる
-    await getLikes(likes, $);//記事内のlikesをとる
-    await getAmazon(articles)//↑のaタグからtitleを抜き出す
+    await getLikes(likes, $);
 
-    //validArticles: included article and amazon
-    const validArticles = await getAmazon(articles);
-    console.log("validArticles!->", validArticles);
-
-    
-
-    //remove article about undefined of amazon
-    const dataInsertToDB = [];
-    for (let i = 0; i < validArticles.length; i++) {
-      // undefinedだったら、配列に格納しない。
-      if (validArticles[i].amazon && validArticles[i].amazon.amazonLinks && !validArticles[i].amazon.amazonLinks.includes("undefined")) {
-        dataInsertToDB.push(validArticles[i]);
-      }
-    }
-    console.log("これが知りたいdataInsertToDB->", dataInsertToDB);
-  
+    //scrape from each blogposts
+    await getAmazon(articles)
+    await getAmazon(articles);
 
     //DB
-    //await insertArticlesAndAmazonsToDB(connection, validArticlesAndAmazon);
+    await insertArticlesAndAmazonsToDB(connection, articles);
     await browser.close();
     console.log('ブラウザを閉じました');
     hasScraped = true;
