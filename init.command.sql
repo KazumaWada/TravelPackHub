@@ -1,4 +1,0 @@
--- init.sql
-CREATE DATABASE IF NOT EXISTS mydatabase;
-GRANT ALL PRIVILEGES ON mydatabase.* TO 'root'@'%' IDENTIFIED BY 'example';
-FLUSH PRIVILEGES;

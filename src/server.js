@@ -118,61 +118,52 @@ return articles;
 }
 
 
-
-  //   {
-  //     "link": "https://note.com/minimalism/n/naa35241a0671",
-  //     "title": "pha『パーティーが終わって、中年が始まる』　〜ピーク過ぎの最高傑作〜",
-  //     "likes": "103",
-  //     "amazon": {
-  //         "amazonLinksArray": [
-  //             "https://amzn.to/3KBq9C1"
-  //         ],
-  //         "amazonTitlesArray": [
-  //             "パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる"
-  //         ],
-  //         "amazonImgsArray": [
-  //             "background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);"
-  //         ]
-  //     }
-  // }
-
 async function insertArticlesAndAmazonsToDB(connection, articles) {
+  //return iをした await insertToArticleTable(connection,articles)を作ったほうがいい??
+
   for (const article of articles) {
-    // ARTICLE TABLE
+    // ARTICLE TABLE//
     const [articleDataInserted] = await connection.execute(
       'INSERT INTO articles (Article_link, Article_title, Article_likes) VALUES (?, ?, ?)', 
       [article.link, Buffer.from(article.title, 'utf8').toString(), article.likes]//文字化け対策
     );
     const articleId = articleDataInserted.insertId; // get article_id
 
-    // AMAZON TABLE
-    // for (const amazon of article.amazon) {
-    //   const [amazonLinkAndTitle] = await connection.execute(
-    //     'SELECT id, count FROM amazon WHERE Amazon_link = ?', 
-    //     [amazon.amazonLink]
-    //   ); // check if amazon link exists
+    // AMAZON TABLE//
+   // for (const article of articles) {
 
-    //   if (amazonLinkAndTitle.length > 0) {
-    //     // if amazon link exists, increment count
-    //     const amazonId = amazonLinkAndTitle[0].id;
-    //     await connection.execute(
-    //       'UPDATE amazon SET count = count + 1 WHERE id = ?', 
-    //       [amazonId]
-    //     );
-    //   } else {
-    //     // if amazon link doesn't exist, insert new record
-    //     const [amazonDataInserted] = await connection.execute(
-    //       'INSERT INTO amazon (Amazon_link, Amazon_title, count) VALUES (?, ?, 1)', 
-    //       [amazon.amazonLink, amazon.amazonTitle]
-    //     );
-    //     const amazonId = amazonDataInserted.insertId; // get amazon_id
-    //     // JOIN TABLE (中間)
-    //     await connection.execute(
-    //       'INSERT INTO article_amazon (article_id, amazon_id) VALUES (?, ?)', 
-    //       [articleId, amazonId]
-    //     );
-    //   }
-    // }
+      const [amazonLinkAndTitle] = await connection.execute(
+        'SELECT id, count FROM amazon WHERE Amazon_link = ?', 
+        [article.amazon.amazonLinksArray]
+      ); // check if amazon link exists
+
+      //[amazonLinkAndTitle]が存在していたらcount++
+      if (amazonLinkAndTitle.length > 0) {
+        // if amazon link exists, increment count
+        const amazonId = amazonLinkAndTitle[0].id;
+        await connection.execute(//既にあったamazonのidで探して、そのcountを++
+          'UPDATE amazon SET count = count + 1 WHERE id = ?', 
+          [amazonId]
+        );
+        //[amazonLinkAndTitle]が無かったら新たに挿入count=1
+      } else {
+        // if amazon link doesn't exist, insert new record
+        const [amazonDataInserted] = await connection.execute(
+          'INSERT INTO amazon (Amazon_link, Amazon_title, Amazon_img, count) VALUES (?, ?, ?, 1)', 
+          [article.amazon.amazonLinksArray, article.amazon.amazonTitlesArray, article.amazon.amazonImgsArray]
+        );
+        const amazonId = amazonDataInserted.insertId; // get amazon_id
+
+        //
+
+
+        // JOIN TABLE (中間)//
+        await connection.execute(
+          'INSERT INTO article_amazon (article_id, amazon_id) VALUES (?, ?)', 
+          [articleId, amazonId]
+        );
+      }
+    //}
   }//for
 }
 
@@ -214,10 +205,10 @@ async function scrapeData() {
 
     //scrape from each blogposts
     await getAmazon(articles)
-    await getAmazon(articles);
+    const validArticles = await getAmazon(articles);
 
     //DB
-    await insertArticlesAndAmazonsToDB(connection, articles);
+    await insertArticlesAndAmazonsToDB(connection, validArticles);
     await browser.close();
     console.log('ブラウザを閉じました');
     hasScraped = true;
@@ -231,7 +222,8 @@ async function scrapeData() {
   }
 }//scrapingData
 
-cron.schedule('* * * * *', scrapeData);
+//cron.schedule('* * * * *', scrapeData);
+cron.schedule('*/5 * * * *', scrapeData);
 
 let connection;
 // ブラウザへ出力するエンドポイント
@@ -324,3 +316,46 @@ app.listen(PORT, () => {
   //         ]
   //     }
   // }
+
+
+//   mysql> select * from articles;
+//   +----+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------+---------------+
+//   | id | Article_link                                | Article_title                                                                                                       | Article_likes |
+//   +----+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------+---------------+
+//   |  1 | https://note.com/minimalism/n/naa35241a0671 | pha『パーティーが終わって、中年が始まる』　〜ピーク過ぎの最高傑作〜                                                 |           105 |
+//   |  2 | https://note.com/minimalism/n/n85a487fa2efc | 香山哲『レタイトナイト』　〜テイストとフレーヴァー〜                                                                |            42 |
+//   |  3 | https://note.com/minimalism/n/n9a3349114750 | 山口祐加『自分のために料理を作る』　〜自分を知る入り口〜                                                            |            47 |
+//   |  4 | https://note.com/minimalism/n/n6aac58b7dfcc | ChatGPTと禅ZEN                                                                                                      |            37 |
+//   |  5 | https://note.com/minimalism/n/nec4d983b5763 | 山下洋平『ルポ ゲーム条例』 〜つべこべ言い、ガタガタ言う〜                                                          |            13 |
+//   |  6 | https://note.com/minimalism/n/n7faacc186d00 | 岡内大三『香川にモスクができるまで』 〜未来の懐かしいコミュニティ・デザイン〜                                       |            17 |
+//   |  7 | https://note.com/minimalism/n/nee062efd5248 | 写真旅行記　台湾①　〜脳細胞が喜ぶ〜                                                                                 |            16 |
+//   +----+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------+---------------+
+//   7 rows in set (0.01 sec)
+  
+//   mysql> select * from amazon;
+//   +----+-------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+---------------------+
+//   | id | Amazon_link                                           | Amazon_title                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Amazon_img                                                                                                                                                                    | Count | last_scraped        |
+//   +----+-------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+---------------------+
+//   |  1 | ["https://amzn.to/3KBq9C1","https://amzn.to/3KBq9C1"] | ["パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる","パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | ["background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:06 |
+//   |  2 | ["https://amzn.to/3QAtchm","https://amzn.to/3QAtchm"] | ["レタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon\n\nレタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon","レタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon\n\nレタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | [null,null]                                                                                                                                                                   |     1 | 2024-08-20 15:51:07 |
+//   |  3 | ["https://amzn.to/45JaqJX","https://amzn.to/45JaqJX"] | ["自分のために料理を作る: 自炊からはじまる「ケア」の話\n\n自分のために料理を作る: 自炊からはじまる「ケア」の話","自分のために料理を作る: 自炊からはじまる「ケア」の話\n\n自分のために料理を作る: 自炊からはじまる「ケア」の話"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | ["background-image: url(https://m.media-amazon.com/images/I/51vTqlo4A1L._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/51vTqlo4A1L._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
+//   |  4 | ["https://amzn.to/46zNJch","https://amzn.to/46zNJch"] | ["ＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ――「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？\n\nＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ 「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？","ＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ――「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？\n\nＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ 「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？"]                                                                                                                                                                                                                                                                                        | ["background-image: url(https://m.media-amazon.com/images/I/51P3yykNiSL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/51P3yykNiSL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
+//   |  5 | ["https://amzn.to/3ofbkh4","https://amzn.to/3ofbkh4"] | ["ルポ　ゲーム条例;なぜゲームが狙われるのか\n\n勝ち続ける意志力　世界一プロ・ゲーマーの「仕事術」　(小学館101新書)\n\nルポ　ゲーム条例;なぜゲームが狙われるのか","ルポ　ゲーム条例;なぜゲームが狙われるのか\n\n勝ち続ける意志力　世界一プロ・ゲーマーの「仕事術」　(小学館101新書)\n\nルポ　ゲーム条例;なぜゲームが狙われるのか"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | ["background-image: url(https://m.media-amazon.com/images/I/41qq3Hfv4SL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/41qq3Hfv4SL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
+//   |  6 | ["https://amzn.to/3LVOAMx","https://amzn.to/3LVOAMx"] | ["香川にモスクができるまで\n\n香川にモスクができるまで","香川にモスクができるまで\n\n香川にモスクができるまで"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | ["background-image: url(https://m.media-amazon.com/images/I/51Lip8ll6nL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/51Lip8ll6nL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
+//   |  7 | [null,null]                                           | ["",""]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | [null,null]                                                                                                                                                                   |     1 | 2024-08-20 15:51:07 |
+//   +----+-------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+---------------------+
+//   7 rows in set (0.01 sec)
+  
+//   mysql> select * from article_amazon;
+// +------------+-----------+
+// | article_id | amazon_id |
+// +------------+-----------+
+// |          1 |         1 |
+// |          2 |         2 |
+// |          3 |         3 |
+// |          4 |         4 |
+// |          5 |         5 |
+// |          6 |         6 |
+// |          7 |         7 |
+// +------------+-----------+
+// 7 rows in set (0.01 sec)

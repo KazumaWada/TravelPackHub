@@ -37,7 +37,6 @@ services:
       - ./my.cnf:/etc/mysql/my.cnf #文字化け対策
       #docker-entrypoint-initdb.d: dockerが起動時に実行されるdir.公式で決まっている。
       #初期化やsetupするファイルがある場合が多い。↓
-      - ./init.command.sql:/docker-entrypoint-initdb.d/init.sql #password手動入力スキップ
 
 
 volumes:

@@ -717,3 +717,4 @@ mysql内でのclientとserverの役割がそれぞれがある。
 "Conn.  characterset:	latin1"
 mysqlが接続で使用している文字セット
 サーバーと通信するときに使用。
+
