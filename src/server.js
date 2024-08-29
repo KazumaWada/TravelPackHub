@@ -1,10 +1,11 @@
 //chrome://inspect/
 const express = require('express');
+const app = express();
 const mysql = require('mysql2/promise');
 const path = require('path');
-const app = express();
-const cheerio = require('cheerio');
+// const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
+const { scrollPageToBottom } = require('puppeteer-autoscroll-down')
 const cron = require('node-cron');
 const cors = require('cors');
 const { devNull } = require('os');
@@ -16,8 +17,10 @@ app.use(cors({
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
+//userが/dirにアクセスしたときに、こっちがpublic/dirを返す。
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/ranking', express.static('ranking'));
+app.use('/start', express.static('start'));
 
 // 環境変数の設定
 if (process.env.NODE_ENV !== 'production') {
@@ -46,51 +49,26 @@ async function createConnection() {
 }
 
 //global
-//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E3%83%AF%E3%83%BC%E3%83%9B%E3%83%AA%E3%80%80%E3%82%A2%E3%83%9E%E3%82%BE%E3%83%B3&context=note&mode=search";
-const url = "https://note.com/search?q=%E4%BD%90%E3%80%85%E6%9C%A8%E5%85%B8%E5%A3%AB%20Fumio%20Sasaki&context=note&mode=search";
+//[海外 持ち物]
+//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%E3%80%80&context=note&mode=search";
+const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 const root = "https://note.com";
 const articles = [];
 
-//$は、検索画面
-async function getTitleLinks(scrapeEle, $){
-scrapeEle.each((idx, el) => {
-  if (idx < 7) {
-    const href = $(el).attr('href');
-    const title = $(el).attr('title');  
-    if (href) {
-      articles.push({ link: root + href,
-                      title: title,
-                      likes : null,              
-                    }
-                    );
-    }
-  }
-});
-return articles;
-}
-
-async function getLikes(scrapeEle, $){
-  scrapeEle.each((idx, el) => {
-    if (idx < 7 && articles[idx]) {//LOOK! 76lines
-     const likes = $(el).text().trim();
-     articles[idx].likes = likes; 
-      }
-    });
-    return articles;
-}
 
 async function getAmazon(articles) {
 
   const browser = await puppeteer.launch({
     headless: 'new',//was "yes"
-    timeout: 1000000000,
+    timeout: 30000,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
 
 for (let i = 0; i < articles.length; i++){
-  await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 100000000 });
+  await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 7000000 });
+  console.log("articles[i].link->",articles[i].link)
   const content = await page.content();
   //各記事の画面
   const $ = cheerio.load(content);
@@ -114,6 +92,7 @@ for (let i = 0; i < articles.length; i++){
   articles[i].amazon.amazonTitlesArray.push(amazonTitlesArray);
  articles[i].amazon.amazonImgsArray.push(amazonImgsArray);
 }
+console.log("articles from getAmazon()", articles);
 return articles;
 }
 
@@ -168,62 +147,113 @@ async function insertArticlesAndAmazonsToDB(connection, articles) {
 }
 
 
-//MAIN FUNCTION//
-// SCRAPING FROM "note.com"
 async function scrapeData() {
   if (hasScraped) {
-    console.log('スクレイピングはすでに実行されました is nodemon works?');
+    console.log('スクレイピングはすでに実行されました');
     return;
   }
-  
+
   let connection;
+
   try {
-    ///DB Connection///
     connection = await createConnection();
     console.log('スクレイプを開始します');
-    //scraping setting//
+
+    // launch browser(https://pptr.dev/)
     const browser = await puppeteer.launch({
-      headless: 'new',//was "yes"
-      timeout: 1000000000,
-      //executablePath: '/path/to/your/chrome', // specify your Chrome/Chromium path
+      headless: 'new', // was 'new' but i wanted watch logs
+      timeout: 30000,
+      slowMo: 250, // slow down by 250ms
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
-    //access web search browser//
-    const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 100000000 });
-    console.log('ページにアクセスしました');
-    const content = await page.content();
-    const $ = cheerio.load(content);
+    // open a new blank page
+    const page = await browser.newPage();    
+    await page.goto(url); console.log("Page loading finished.");
+    await page.setViewport({width: 1080, height: 1024});
 
-    const titlesAndLinks = $("a.a-link.m-largeNoteWrapper__link.fn");
-    const likes = $("span.text-text-secondary");
+    let isLoadingAvailable = true;
+    let pngIndex = 0;//for pdf debug
+    let noScrollCount = 0;
+    let maxNoScrollAttempt = 5;
+    //let articles = {link:[],title:[],likes:[]};
+    //let scrapeIndex = 0;
+    while (isLoadingAvailable) {
+      pngIndex++;
+      //サイト内でjavascriptを実行。最初は0 use for debug
+      const scrollTopBefore = await page.evaluate(() => document.documentElement.scrollTop);
+      console.log(`ScrollTop before: ${scrollTopBefore}`);
+      await page.screenshot({ path: `pdfLog/before_scroll_${pngIndex}.png` }); 
 
-    //scrape from blog site// 
-    await getTitleLinks(titlesAndLinks, $) //記事内のtitleをとる
-    await getLikes(likes, $);
+      //get title,links,likes
+      const articles = await page.evaluate(() => {
+        const scrapeEles = document.querySelectorAll(".m-largeNoteWrapper");
+        return Array.from(scrapeEles).map(scrapeEle => {
+          const linkElement = scrapeEle.querySelector("a.a-link.m-largeNoteWrapper__link.fn");
+          const likesElement = scrapeEle.querySelector(".o-noteLikeV3 .text-text-secondary");
+          
+          return {
+            //articles[scrapeIndex].link.push(linkElement.href),
+            link : linkElement ? linkElement.href : null,
+            title: linkElement ? linkElement.getAttribute('title') : null,
+            likes: likesElement ? likesElement.textContent.trim() : null
+          };
+        });
+      });
 
-    //scrape from each blogposts
-    await getAmazon(articles)
-    const validArticles = await getAmazon(articles);
+      //console.log("articles", articles);
 
-    //DB
-    await insertArticlesAndAmazonsToDB(connection, validArticles);
+      //scroll
+      console.log("Scrolling...");
+
+      await scrollPageToBottom(page, {
+        size: 500,
+        delay: 500, //accouding to pptr.dev, they wrote "size" only.
+        stepsLimit: 10
+      });
+
+      //debug
+      console.log("Scroll completed.");
+      console.log("numbers of articles elements found:", articles.length);
+
+      //debug 現在地から上まで測る。
+      const scrollTopAfter = await page.evaluate(() => document.documentElement.scrollTop);
+      console.log(`scraped size: ${scrollTopAfter}`);
+      await page.screenshot({ path: `pdfLog/after_scroll_${pngIndex}.png` });       
+
+      //ここをページのスクロールsizeが変化しなくなったら
+      if (scrollTopBefore === scrollTopAfter) {
+        noScrollCount++;
+        console.log(`no scroll detected. attempt ${noScrollCount} of ${maxNoScrollAttempt}`);
+        if(noScrollCount >= maxNoScrollAttempt){
+          console.log("max scroll times reached. stop scrolling.")
+          console.log("result of articles",articles);//ok
+          isLoadingAvailable = false;
+          return articles;
+        }
+      }   
+      else{
+        noScrollCount = 0;//reset
+      }   
+    }
     await browser.close();
     console.log('ブラウザを閉じました');
     hasScraped = true;
+    return articles;
   } catch (err) {
     console.error('スクレイプ中にエラーが発生しました:', err);
+    return [];
   } finally {
     if (connection) {
       await connection.end();
       console.log('データベース接続を閉じました');
     }
   }
-}//scrapingData
+}
+
 
 //cron.schedule('* * * * *', scrapeData);
-cron.schedule('*/5 * * * *', scrapeData);
+//cron.schedule('*/30 * * * *', scrapeData);
 
 let connection;
 // ブラウザへ出力するエンドポイント
@@ -255,6 +285,27 @@ app.get('/ranking', async (req, res) => {
     res.status(500).json({error: 'internal server error'});
   }
 });
+//travelpackhub.com/startに対してフロントからのリクエスト、バックエンドからのレスポンスをそれぞれ書くのがhttpリクエスト
+app.get('/start', async(req,res) =>{
+  try{
+    const articles = await scrapeData();
+    console.log("articles from /start", articles);
+    if(articles.length > 0){
+    const validArticles = await getAmazon(articles);
+    console.log("validArticles", validArticles);
+    await insertArticlesAndAmazonsToDB(connection, validArticles);
+    }else{
+      res.status(200).send('no scrape data found')
+    }
+    
+    //res.status(200): HTTPのレスポンスステータスコード
+    //.send(''): HTTPのレスポンスの本文
+    //フロントからもfetchリクエスト(post,getどちらも意味する)を設定する必要がある。
+    //res.status(200).send('scrape done');
+  }catch{
+    res.status(500).send('scrapeData() not started...')
+  }
+})
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -262,100 +313,5 @@ app.listen(PORT, () => {
 });
 
   
-// +------------+-----------+
-// | article_id | amazon_id |
-// +------------+-----------+
-// |          1 |         1 |
-// |          2 |         2 |
-// |          2 |         3 |
-// |          2 |         4 |
-// |          2 |         5 |
-// |          2 |         6 |
-// |          2 |         7 |
-// +------------+-----------+
-// 7 rows in set (0.01 sec)
-
-   // for(const article of validArticlesAndAmazon){//この中は、link,title,likesとamazonLinks:{...}
-    //   //ARTICLE TABLE//
-    //   const [articleDataInserted] = await connection.execute('insert into articles (Article_link,Title,Likes) values (?,?,?)', [article.link, article.title, article.likes]);
-    //   const articleId = articleDataInserted.insertId;//get article_id
-    //   //AMAZON TABLE//
-    //   for (const amazon of article.amazon) {//id,link,count
-    //     const [amazonLinkAndTitle] =  await connection.execute('SELECT id, count FROM amazon WHERE Amazon_link = ?', [amazon.amazonLink]);//amazon exist?
-
-    //     if(amazonLinkAndTitle.length > 0){
-    //     //count++
-    //      let amazonId = amazonLinkAndTitle[0].id;//get Id where the one already exist and count++ in that row.
-    //      await connection.execute('UPDATE amazon SET count = count +1 WHERE id = ?', [amazonId]);
-    //     }else{
-    //     //amazonLinkがまだ挿入されていない場合
-    //     //count = 1
-    //    const [amazonDataInserted] = await connection.execute('insert into amazon (Amazon_link, Amazon_title, count) values (?,?, 1)', [amazon.amazonLink,amazon.amazonTitle]);
-    //    let amazonId = amazonDataInserted.insertId;//get amazon_id
-    //     //JOIN TABLE(中間)//
-    //     await connection.execute('insert into article_amazon (article_id, amazon_id) values (?, ?)', [articleId, amazonId]);
-    //     }
-    //   }
-    // }
 
 
-   
-  //   {
-  //     "link": "https://note.com/minimalism/n/naa35241a0671",
-  //     "title": "pha『パーティーが終わって、中年が始まる』　〜ピーク過ぎの最高傑作〜",
-  //     "likes": "103",
-  //     "amazon": {
-  //         "amazonLinksArray": [
-  //             "https://amzn.to/3KBq9C1"
-  //         ],
-  //         "amazonTitlesArray": [
-  //             "パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる"
-  //         ],
-  //         "amazonImgsArray": [
-  //             "background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);"
-  //         ]
-  //     }
-  // }
-
-
-//   mysql> select * from articles;
-//   +----+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------+---------------+
-//   | id | Article_link                                | Article_title                                                                                                       | Article_likes |
-//   +----+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------+---------------+
-//   |  1 | https://note.com/minimalism/n/naa35241a0671 | pha『パーティーが終わって、中年が始まる』　〜ピーク過ぎの最高傑作〜                                                 |           105 |
-//   |  2 | https://note.com/minimalism/n/n85a487fa2efc | 香山哲『レタイトナイト』　〜テイストとフレーヴァー〜                                                                |            42 |
-//   |  3 | https://note.com/minimalism/n/n9a3349114750 | 山口祐加『自分のために料理を作る』　〜自分を知る入り口〜                                                            |            47 |
-//   |  4 | https://note.com/minimalism/n/n6aac58b7dfcc | ChatGPTと禅ZEN                                                                                                      |            37 |
-//   |  5 | https://note.com/minimalism/n/nec4d983b5763 | 山下洋平『ルポ ゲーム条例』 〜つべこべ言い、ガタガタ言う〜                                                          |            13 |
-//   |  6 | https://note.com/minimalism/n/n7faacc186d00 | 岡内大三『香川にモスクができるまで』 〜未来の懐かしいコミュニティ・デザイン〜                                       |            17 |
-//   |  7 | https://note.com/minimalism/n/nee062efd5248 | 写真旅行記　台湾①　〜脳細胞が喜ぶ〜                                                                                 |            16 |
-//   +----+---------------------------------------------+---------------------------------------------------------------------------------------------------------------------+---------------+
-//   7 rows in set (0.01 sec)
-  
-//   mysql> select * from amazon;
-//   +----+-------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+---------------------+
-//   | id | Amazon_link                                           | Amazon_title                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Amazon_img                                                                                                                                                                    | Count | last_scraped        |
-//   +----+-------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+---------------------+
-//   |  1 | ["https://amzn.to/3KBq9C1","https://amzn.to/3KBq9C1"] | ["パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる","パーティーが終わって、中年が始まる\n\nグッド・ライフ　幸せになるのに、遅すぎることはない (＆books)\n\nすべての雑貨 (ちくま文庫 み-38-1)\n\nパーティーが終わって、中年が始まる"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | ["background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/41bta07TYKL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:06 |
-//   |  2 | ["https://amzn.to/3QAtchm","https://amzn.to/3QAtchm"] | ["レタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon\n\nレタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon","レタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon\n\nレタイトナイト1 (路草コミックス) | 香山哲 |本 | 通販 | Amazon"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | [null,null]                                                                                                                                                                   |     1 | 2024-08-20 15:51:07 |
-//   |  3 | ["https://amzn.to/45JaqJX","https://amzn.to/45JaqJX"] | ["自分のために料理を作る: 自炊からはじまる「ケア」の話\n\n自分のために料理を作る: 自炊からはじまる「ケア」の話","自分のために料理を作る: 自炊からはじまる「ケア」の話\n\n自分のために料理を作る: 自炊からはじまる「ケア」の話"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | ["background-image: url(https://m.media-amazon.com/images/I/51vTqlo4A1L._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/51vTqlo4A1L._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
-//   |  4 | ["https://amzn.to/46zNJch","https://amzn.to/46zNJch"] | ["ＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ――「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？\n\nＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ 「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？","ＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ――「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？\n\nＮＨＫ「１００分ｄｅ名著」ブックス　道元　正法眼蔵　わからないことがわかるということが悟り\n\n生成ＡＩ 「ChatGPT」を支える技術はどのようにビジネスを変え、人間の創造性を揺るがすのか？"]                                                                                                                                                                                                                                                                                        | ["background-image: url(https://m.media-amazon.com/images/I/51P3yykNiSL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/51P3yykNiSL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
-//   |  5 | ["https://amzn.to/3ofbkh4","https://amzn.to/3ofbkh4"] | ["ルポ　ゲーム条例;なぜゲームが狙われるのか\n\n勝ち続ける意志力　世界一プロ・ゲーマーの「仕事術」　(小学館101新書)\n\nルポ　ゲーム条例;なぜゲームが狙われるのか","ルポ　ゲーム条例;なぜゲームが狙われるのか\n\n勝ち続ける意志力　世界一プロ・ゲーマーの「仕事術」　(小学館101新書)\n\nルポ　ゲーム条例;なぜゲームが狙われるのか"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | ["background-image: url(https://m.media-amazon.com/images/I/41qq3Hfv4SL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/41qq3Hfv4SL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
-//   |  6 | ["https://amzn.to/3LVOAMx","https://amzn.to/3LVOAMx"] | ["香川にモスクができるまで\n\n香川にモスクができるまで","香川にモスクができるまで\n\n香川にモスクができるまで"]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | ["background-image: url(https://m.media-amazon.com/images/I/51Lip8ll6nL._SL500_.jpg);","background-image: url(https://m.media-amazon.com/images/I/51Lip8ll6nL._SL500_.jpg);"] |     1 | 2024-08-20 15:51:07 |
-//   |  7 | [null,null]                                           | ["",""]                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | [null,null]                                                                                                                                                                   |     1 | 2024-08-20 15:51:07 |
-//   +----+-------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------+---------------------+
-//   7 rows in set (0.01 sec)
-  
-//   mysql> select * from article_amazon;
-// +------------+-----------+
-// | article_id | amazon_id |
-// +------------+-----------+
-// |          1 |         1 |
-// |          2 |         2 |
-// |          3 |         3 |
-// |          4 |         4 |
-// |          5 |         5 |
-// |          6 |         6 |
-// |          7 |         7 |
-// +------------+-----------+
-// 7 rows in set (0.01 sec)
