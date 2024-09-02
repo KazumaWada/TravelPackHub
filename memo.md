@@ -718,3 +718,127 @@ mysql内でのclientとserverの役割がそれぞれがある。
 mysqlが接続で使用している文字セット
 サーバーと通信するときに使用。
 
+
+8/31
+- amazonが全部取得できていない。
+- [array]で表示されているから、すべて表示するようにする。
+ debug each amazon but just 10.
+app-1  | link-> "https://note.com/mimi0926ruichan/n/n279ad29898ec"
+app-1  | amazon.amazonLinks [
+app-1  |   "https://amzn.to/4dFqmB6",
+app-1  |   "https://amzn.to/3MlxIO2",
+app-1  |   "https://amzn.to/476DNHH",
+app-1  |   "https://amzn.to/4cZSG01",
+app-1  |   "https://amzn.to/4e3nyO6",
+app-1  |   "https://amzn.to/3YXS5bG",
+app-1  |   "https://amzn.to/4g4cnpT",
+app-1  |   "https://amzn.to/3AGy0g5",
+app-1  |   "https://amzn.to/3T62wpM",
+app-1  |   "https://amzn.to/3XkuJfa",
+app-1  |   "https://amzn.to/474kYot"
+app-1  | ]
+app-1  | amazon.amazonTitles [
+app-1  |   "iHouse all 海外変換プラグ コンセ ント変換プラグ マルチ変換プラグ 2U SBポート 全世界対 応 経済産業省承認 正規保証1年",
+app-1  |   "[LiberFlyer] セキュリポ（SECURIPO）セキュリティウエストポーチ 防水 ((ブラック（赤ジッパー）))",
+app-1  |   "TALLGO 旅行用枕 最高の低反発素材 首枕 頭部サポートソフト枕 睡眠休息 飛行機 車 家庭用 (ブラック) ブラック TP-B",
+app-1  |   "【雑誌掲載商品】ネックピロー 飛行機 車 新幹線 首枕【柔道整復師×睡眠のプロ監修】neck pillow トラベルピロー 長距離 旅行 低反発 携帯枕 クッション 便利グッズ 快適グッズ (グレー)",
+app-1  |   "Yogibo Neck Pillow X Logo（ヨギボー ネックピロー エックス ロゴ） ダークグレー",
+app-1  |   "Anker PowerCore 10000 (10000mAh 大容量 モバイルバッテリー)【PSE技術基準適合/PowerIQ搭載】 iPhone&Android対応 (ブラック)",
+app-1  |   "Anker PowerCore Essential 20000 (モバイルバッテリー 20000mAh) 【USB-C入力ポート/PSE技術基準適合/PowerIQ/低電流モード搭載】 iPhone iPad Android 各種対応 (ブラック)",
+app-1  |   "Anker iPhone充電ケーブル PowerLine II ライトニングケーブル MFi認証 超高耐久 iPhone 14 / 14 Pro Max / 14 Plus / 13 / 13 Pro / 12 / 11 / X/XS/XR / 8 Plus 各種対応 (0.9m ホワイト)",
+app-1  |   "Anker iPhone充電ケーブル PowerLine II ライトニングケーブル MFi認証 超高耐久 iPhone 14 / 14 Plus / 14 Pro / 14 Pro Max / 13 / SE (第3世代) / iPad 各種対応 (1.8m ホワイト)",
+app-1  |   "[Besttravel] バックパック メンズ トラベルバックパック 45L 大容量 リュック 防水 17.3インチのラップト 男性女性 通勤用 アウトドア スポーツ キャンプ ブラック",
+app-1  |   "[Mleurvoya] リュック大容量 ビジネスリュック バックパック 登山リュック 45Lリュック 17.3インチ 防水 軽量 通気性 多機能 USB充電ポート搭載 盗難防止 通勤 通学 出張 旅行 アウトドア 耐衝撃 (ブラック）"
+app-1  | ]
+app-1  | amazon.amazonImgs [
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/31TRh429VxL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41ZpskJ-RcL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51JvKFu5LEL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51fLz6rvFrL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/31P92vALa7L._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/31B5rBNP+8L._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41hr0oPkl-L._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/21wsug51QvL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/31549GhneGS._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/410IgL1nXPL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/31PbXKZ3OfL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51qx4t2JcZL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/31J2A5waiVL._SL500_.jpg);"
+app-1  | ]
+
+
+
+app-1  | debug each amazon but just 10.[ここ]
+app-1  | link-> "https://note.com/mimi_latte/n/nfee47f94ad90"
+app-1  | amazon.amazonLinks []
+app-1  | amazon.amazonTitles []
+app-1  | amazon.amazonImgs [
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/415GGKQwPXL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51zeLpbO-2L._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41V3ppkhICL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41VNFbF3ORL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51qnNm2+4nL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51VJxKuWd4L._SL500_.jpg);"
+app-1  | ]
+
+debug each amazon but just 10.
+app-1  | link-> "https://note.com/mimi_latte/n/nfee47f94ad90"
+app-1  | amazon.amazonLinks [
+app-1  |   "https://www.amazon.co.jp/dp/B007E66HHS?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B07ZGV9W29?tag=note0e2a-22&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B07BQHCLPF?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B07F83XM12?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B00J5ARSHY?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B00CP3F6JK?tag=se&linkCode=ogi&th=1&psc=1"
+app-1  | ]
+app-1  | amazon.amazonTitles []
+app-1  | amazon.amazonImgs [
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/415GGKQwPXL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51zeLpbO-2L._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41V3ppkhICL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41VNFbF3ORL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51qnNm2+4nL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51VJxKuWd4L._SL500_.jpg);"
+app-1  | ]
+
+ debug each amazon but just 10.
+app-1  | link-> "https://note.com/mimi_latte/n/nfee47f94ad90"
+app-1  | amazon.amazonLinks [
+app-1  |   "https://www.amazon.co.jp/dp/B007E66HHS?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B07ZGV9W29?tag=note0e2a-22&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B07BQHCLPF?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B07F83XM12?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B00J5ARSHY?tag=se&linkCode=ogi&th=1&psc=1",
+app-1  |   "https://www.amazon.co.jp/dp/B00CP3F6JK?tag=se&linkCode=ogi&th=1&psc=1"
+app-1  | ]
+app-1  | amazon.amazonTitles [
+app-1  |   "三菱鉛筆 ボールペン替芯 ジェットストリーム 0.5 黒 5本 SXR-55P",
+app-1  |   "【Amazon.co.jp限定】【大容量】めぐりズム蒸気でホットアイマスク 完熟ゆずの香り 16枚入",
+app-1  |   "オーストラリア ニュージーランド アルゼンチン コンセント変換アダプタ 海外旅行用プラグ Oタイプ 4個セット(白)",
+app-1  |   "パナソニック ヘアドライヤー ナノケア 海外対応 ゴールド EH-NA5A-N",
+app-1  |   "アマノフーズ いつものおみそ汁 なす 9.5g×10個",
+app-1  |   "伊藤園 香り薫るむぎ茶ティーバッグ 54袋入×3"
+app-1  | ]
+app-1  | amazon.amazonImgs [
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/415GGKQwPXL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51zeLpbO-2L._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41V3ppkhICL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/41VNFbF3ORL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51qnNm2+4nL._SL500_.jpg);",
+app-1  |   "background-image: url(https://m.media-amazon.com/images/I/51VJxKuWd4L._SL500_.jpg);"
+app-1  | ]
+
+
+v View in Docker Desktop   w En
+
+
+
+## problems:
+- amazonTitlesが他の記事の被リンクを取得している時がある。[done!]
+- amazonLinksが被っている時がある。[done!]
+- 3つのどれかが取得できていない時がある。[done!]
+amznと書かれているのと、amznの違いだと思う。
+amznもしくは、amazonにしてみる。
+
+9/2
+- DBに挿入する。

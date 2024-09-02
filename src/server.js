@@ -49,53 +49,121 @@ async function createConnection() {
 }
 
 //global
+const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%E3%80%80amazon%20%E3%82%AA%E3%83%BC%E3%82%B9%E3%83%88%E3%83%A9%E3%83%AA%E3%82%A2&context=note&mode=search"
+//[海外　持ち物 amazon]
+//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
 //[海外 持ち物]
-//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%E3%80%80&context=note&mode=search";
-const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
+//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 const root = "https://note.com";
 const articles = [];
 
 
-async function getAmazon(articles) {
+// async function getAmazon(articles) {
 
+//   const browser = await puppeteer.launch({
+//     headless: 'new',//was "yes"
+//     timeout: 30000,
+//     args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//   });
+//   const page = await browser.newPage();
+
+// for (let i = 0; i < articles.length; i++){
+//   await page.goto(articles[i].link);console.log("indivisial page loaded.")
+//   console.log("articles[i].link->",articles[i].link)
+//   //const content = await page.content();
+//   await page.setViewport({width: 1080, height: 1024});
+
+//   await page.evaluate(() =>{
+//   const container = document.querySelectorAll("external-article-widget--type_shopping");
+//   return Array.from(container).map(container =>{
+//     const amazonLinksArray = container.querySelector("")
+//   })
+//   })
+
+
+
+
+//   //array.fromで一つの記事内をloopする
+//   //各記事の画面
+//   //get amazonLink
+//   const amazonLinksArray = $('a[href^="https://amzn"]').attr('href')
+//   //get amazonTitle
+//   const amazonTitlesArray = $('strong.external-article-widget-title').text().trim();
+//   //get amazonImg
+//   const amazonImgsArray = $('span.external-article-widget-productImage').attr('style');
+
+//   //initialize
+//   if(!articles[i].amazon){
+//     articles[i].amazon = {
+//       amazonLinksArray:[],
+//       amazonTitlesArray:[],
+//       amazonImgsArray:[]
+//   }
+//   }
+//   //push
+//   articles[i].amazon.amazonLinksArray.push(amazonLinksArray);
+//   articles[i].amazon.amazonTitlesArray.push(amazonTitlesArray);
+//  articles[i].amazon.amazonImgsArray.push(amazonImgsArray);
+// }
+// console.log("articles from getAmazon()", articles);
+// return articles;
+// }
+// ... existing code ...
+
+async function getAmazon(articles) {
+  console.log("hello from getAmazon()!");
   const browser = await puppeteer.launch({
-    headless: 'new',//was "yes"
+    headless: 'new',
     timeout: 30000,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
+  for (let i = 0; i < 10; i++) {
+    await page.goto(articles[i].link,{ waitUntil: 'load', timeout: 60000 });
+    console.log(articles[i].link, " articles[i].link");
+    await page.setViewport({width: 1080, height: 1024});
+    await page.screenshot({ path: `pdfLog/debug_${i}.png` });
 
-for (let i = 0; i < articles.length; i++){
-  await page.goto(articles[i].link, { waitUntil: 'networkidle2', timeout: 7000000 });
-  console.log("articles[i].link->",articles[i].link)
-  const content = await page.content();
-  //各記事の画面
-  const $ = cheerio.load(content);
-  //get amazonLink
-  const amazonLinksArray = $('a[href^="https://amzn"]').attr('href')
-  //get amazonTitle
-  const amazonTitlesArray = $('strong.external-article-widget-title').text().trim();
-  //get amazonImg
-  const amazonImgsArray = $('span.external-article-widget-productImage').attr('style');
+    // Extract Amazon links, titles, and images
+    const amazonData = await page.evaluate(() => {
+      //classがexternal~かつ、amznもしくはamazon.co.jpで始まるaタグ。その中のhrefを選択
+      //const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"]')).map(el => el.href);
+      const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"], a.external-article-widget-image[href^="https://www.amazon.co.jp"]')).map(el => el.href);
+      //hrefにamznまたはamazonが含まれている子要素のtitle.(amazon以外の他の記事の被リンクとかも含まれてしまうから。)
+      const amazonTitles = Array.from(document.querySelectorAll('a[href*="amzn"] strong.external-article-widget-title, a[href*="amazon.co.jp"] strong.external-article-widget-title')).map(el => el.textContent.trim());
+      //const amazonImgs = Array.from(document.querySelectorAll('span.external-article-widget-productImage')).map(el => el.getAttribute('style'));
+      const amazonImgs = Array.from(document.querySelectorAll('span.external-article-widget-productImage'))
+      .map(el => {
+      const style = el.getAttribute('style');
+      const match = style.match(/url\("?(https:\/\/[^"]+)"?\)/);
+      return match ? match[1] : null;
+      });
+      
+      return { amazonLinks, amazonTitles, amazonImgs };
+    });
 
-  //initialize
-  if(!articles[i].amazon){
-    articles[i].amazon = {
-      amazonLinksArray:[],
-      amazonTitlesArray:[],
-      amazonImgsArray:[]
+    // Initialize amazon property
+    if (!articles[i].amazon) {
+      articles[i].amazon = {
+        amazonLinksArray: [],
+        amazonTitlesArray: [],
+        amazonImgsArray: []
+      };
+    }
+
+    // Push the extracted data
+    articles[i].amazon.amazonLinksArray.push(...amazonData.amazonLinks);
+    articles[i].amazon.amazonTitlesArray.push(...amazonData.amazonTitles);
+    articles[i].amazon.amazonImgsArray.push(...amazonData.amazonImgs);
   }
-  }
-  //push
-  articles[i].amazon.amazonLinksArray.push(amazonLinksArray);
-  articles[i].amazon.amazonTitlesArray.push(amazonTitlesArray);
- articles[i].amazon.amazonImgsArray.push(amazonImgsArray);
-}
-console.log("articles from getAmazon()", articles);
-return articles;
+
+  console.log("articles from getAmazon()", articles);
+  await browser.close();
+  return articles;
 }
 
+// ... rest of the code ...
 
 async function insertArticlesAndAmazonsToDB(connection, articles) {
   //return iをした await insertToArticleTable(connection,articles)を作ったほうがいい??
@@ -188,10 +256,11 @@ async function scrapeData() {
       //get title,links,likes
       const articles = await page.evaluate(() => {
         const scrapeEles = document.querySelectorAll(".m-largeNoteWrapper");
+        //page.evaluateのreturn
         return Array.from(scrapeEles).map(scrapeEle => {
           const linkElement = scrapeEle.querySelector("a.a-link.m-largeNoteWrapper__link.fn");
           const likesElement = scrapeEle.querySelector(".o-noteLikeV3 .text-text-secondary");
-          
+          //mapのreturn
           return {
             //articles[scrapeIndex].link.push(linkElement.href),
             link : linkElement ? linkElement.href : null,
@@ -227,7 +296,6 @@ async function scrapeData() {
         console.log(`no scroll detected. attempt ${noScrollCount} of ${maxNoScrollAttempt}`);
         if(noScrollCount >= maxNoScrollAttempt){
           console.log("max scroll times reached. stop scrolling.")
-          console.log("result of articles",articles);//ok
           isLoadingAvailable = false;
           return articles;
         }
@@ -289,15 +357,26 @@ app.get('/ranking', async (req, res) => {
 app.get('/start', async(req,res) =>{
   try{
     const articles = await scrapeData();
-    console.log("articles from /start", articles);
     if(articles.length > 0){
+    console.log("getAmazon() will be launch!")
     const validArticles = await getAmazon(articles);
     console.log("validArticles", validArticles);
+    //debug
+    for(let i=0; i<9; i++){
+      console.log("debug each amazon but just 10.")
+      console.log("link->", JSON.stringify(validArticles[i].link));
+      console.log("amazon.amazonLinks",JSON.stringify(validArticles[i].amazon.amazonLinksArray,null,2));
+      console.log("amazon.amazonTitles",JSON.stringify(validArticles[i].amazon.amazonTitlesArray,null,2));
+      console.log("amazon.amazonImgs",JSON.stringify(validArticles[i].amazon.amazonImgsArray,null,2));
+    }
+    console.log("done!!!");
+    debugger;
     await insertArticlesAndAmazonsToDB(connection, validArticles);
     }else{
       res.status(200).send('no scrape data found')
     }
     
+
     //res.status(200): HTTPのレスポンスステータスコード
     //.send(''): HTTPのレスポンスの本文
     //フロントからもfetchリクエスト(post,getどちらも意味する)を設定する必要がある。
