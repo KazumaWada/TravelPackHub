@@ -840,5 +840,19 @@ v View in Docker Desktop   w En
 amznと書かれているのと、amznの違いだと思う。
 amznもしくは、amazonにしてみる。
 
-9/2
-- DBに挿入する。
+9/3
+## problems
+まだ完全に商品のみを取得はできていないけど、(amazonリンクのキャンペーンとかが取得されている)ランキングを作った時に多分それは下の方に表示されたりされなかったりするだろうから放っといていい。
+## todo
+| id | Article_link                                     | Article_title                                                                                                                                                         
+|  1 | https://note.com/mimi0926ruichan/n/n279ad29898ec | 【海外旅行必須道具5選】Amazonアソシエイト始めました+「AmazonスマイルSALE」ということで、初めての海外旅行に必要な道具紹介しまっす                                                        |            68 |
+|  2 | https://note.com/mimi0926ruichan/n/n279ad29898ec | 【海外旅行必須道具5選】Amazonアソシエイト始めました+「AmazonスマイルSALE」ということで、初めての海外旅行に必要な道具紹介しまっす                                                        |            68 |
+|  3 | https://note.com/mimi0926ruichan/n/n279ad29898ec | 【海外旅行必須道具5選】Amazonアソシエイト始めました+「AmazonスマイルSALE」ということで、初めての海外旅行に必要な道具紹介しまっす                                                        |            68 |
+
+# 続き
+9/5
+timeout errorは飛ばして先に進む。
+ゴール
+- DBからデータを取り出してコンソールに表示させる。
+- 表示させるには/rankingを発火させる必要があるけど、それはどうやって発火させるのかまず考える。
+- /rankingのデータは、キャッシュか何かで残しておいて、ロードされるたびにDBからデータをとってくるのをやめる。(後で)
