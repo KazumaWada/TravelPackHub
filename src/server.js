@@ -313,35 +313,83 @@ async function scrapeData() {
 let connection;
 // ブラウザへ出力するエンドポイント
 app.get('/ranking', async (req, res) => {
-  try{
+  try {
     connection = await createConnection();
-      //get amazonLinks.link(商品ランキング) && article.link,.title(紹介されている記事top5)
-    const [rows] = await connection.execute(`
-    WITH TopAmazonLink AS (
-      SELECT id, Amazon_link
-      FROM amazon_links
-      ORDER BY Count DESC
-      LIMIT 5
-      )
+    const [getScrapedDataFromDB] = await connection.execute(`
+WITH RankedArticles AS (
     SELECT 
-      TopAmazonLink.Amazon_link,
-      articles.Article_link, 
-      articles.title,  
-      articles.likes
-    FROM TopAmazonLink
-    JOIN article_amazon ON TopAmazonLink.id = article_amazon.amazon_id
-    JOIN articles ON article_amazon.article_id = articles.id
-    ORDER BY articles.likes DESC;
+        a.id AS amazon_id, 
+        a.Amazon_link, 
+        a.Amazon_title, 
+        a.Amazon_img, 
+        a.Count,  -- amazonテーブルのcountを追加
+        art.id AS article_id, 
+        art.Article_link, 
+        art.Article_title, 
+        art.Article_likes,
+        ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY art.Article_likes DESC) AS rn
+    FROM 
+        amazon a
+    JOIN 
+        article_amazon aa ON a.id = aa.amazon_id
+    JOIN 
+        articles art ON aa.article_id = art.id
+    ORDER BY 
+        a.Count DESC
+)
+SELECT 
+    Amazon_link, 
+    Amazon_title, 
+    Amazon_img, 
+    Count,  -- amazonテーブルのcountを追加
+    Article_link, 
+    Article_title, 
+    Article_likes
+FROM 
+    RankedArticles
+WHERE 
+    rn <= 5;
+
+
     `);
-    //フロントを確認したら、rowsにamazonのリンクが入っていなかった。多分書き方がおかしいんだと思う。
-    res.json(rows);//フロントへ送信
-  }catch(error){
-    console.error('error fetching ranking data: ', error);
-    res.status(500).json({error: 'internal server error'});
+    res.status(200).json(getScrapedDataFromDB); // 200 OK と共にデータを送信
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch articles' }); // エラーメッセージを送信
   }
+
+   
+
+  // try{
+  //   connection = await createConnection();
+  //     //get amazonLinks.link(商品ランキング) && article.link,.title(紹介されている記事top5)
+  //   const [rows] = await connection.execute(`
+  //   WITH TopAmazonLink AS (
+  //     SELECT id, Amazon_link
+  //     FROM amazon_links
+  //     ORDER BY Count DESC
+  //     LIMIT 5
+  //     )
+  //   SELECT 
+  //     TopAmazonLink.Amazon_link,
+  //     articles.Article_link, 
+  //     articles.title,  
+  //     articles.likes
+  //   FROM TopAmazonLink
+  //   JOIN article_amazon ON TopAmazonLink.id = article_amazon.amazon_id
+  //   JOIN articles ON article_amazon.article_id = articles.id
+  //   ORDER BY articles.likes DESC;
+  //   `);
+  //   //フロントを確認したら、rowsにamazonのリンクが入っていなかった。多分書き方がおかしいんだと思う。
+  //   res.json(rows);//フロントへ送信
+  // }catch(error){
+  //   console.error('error fetching ranking data: ', error);
+  //   res.status(500).json({error: 'internal server error'});
+  // }
 });
 //travelpackhub.com/startに対してフロントからのリクエスト、バックエンドからのレスポンスをそれぞれ書くのがhttpリクエスト
 app.get('/start', async(req,res) =>{
+  //scrapeデータをDBに入れるだけのコード
   try{
     const articles = await scrapeData();
     if(articles.length > 0){
@@ -357,7 +405,6 @@ app.get('/start', async(req,res) =>{
       console.log("amazon.amazonImgs",JSON.stringify(validArticles[i].amazon.amazonImgsArray,null,2));
     }
     console.log("done!!!");
-    debugger;
     await insertArticlesAndAmazonsToDB(validArticles);
     }else{
       res.status(200).send('no scrape data found')

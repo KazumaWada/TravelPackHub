@@ -852,7 +852,29 @@ amznもしくは、amazonにしてみる。
 # 続き
 9/5
 timeout errorは飛ばして先に進む。
-ゴール
-- DBからデータを取り出してコンソールに表示させる。
-- 表示させるには/rankingを発火させる必要があるけど、それはどうやって発火させるのかまず考える。
-- /rankingのデータは、キャッシュか何かで残しておいて、ロードされるたびにDBからデータをとってくるのをやめる。(後で)
+
+
+テストで、articlesを出力したらいけた。あとはランキング順に並べる。
+送るデータを紙に書いて確かめる。
+
+```sql
+SELECT 
+    amazon.Amazon_link, 
+    amazon.Amazon_title, 
+    amazon.Amazon_img, 
+    articles.Article_link, 
+    articles.Article_title, 
+    articles.Article_likes
+FROM 
+    amazon
+JOIN 
+    article_amazon ON amazon.id = article_amazon.amazon_id
+JOIN 
+    articles ON article_amazon.article_id = articles.id
+ORDER BY 
+    amazon.Count DESC, 
+    articles.Article_likes DESC
+LIMIT 5;
+```
+{"amazon_id":25,"Amazon_link":"https://www.amazon.co.jp/dp/B0CYKWZN76","Amazon_title":"Amazon.co.jp: あなただけの旅の計画の立て方 ~ 旅行業界に忖度なしで、計画の立て方と裏技を解説【旅行の持ち物リスト付き】 電子書籍: Genki Kingetsu: Kindleストア","Amazon_img":"No images","Count":6,"Article_link":"https://note.com/gkingets/n/n1bd49118d58b","Article_title":"あなただけの旅の計画の立て方","Article_likes":112}
+
