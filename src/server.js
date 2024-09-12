@@ -49,26 +49,35 @@ async function createConnection() {
 }
 
 //global
-const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%E3%80%80amazon%20%E3%82%AA%E3%83%BC%E3%82%B9%E3%83%88%E3%83%A9%E3%83%AA%E3%82%A2&context=note&mode=search"
 //[海外　持ち物 amazon]
 //const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
 //[海外 持ち物]
-//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
+const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 const root = "https://note.com";
 const articles = [];
 
 
 async function getAmazon(articles) {
+  let batchSize = 50;
+  let articlesBatch = [];
+
   console.log("hello from getAmazon()!");
   const browser = await puppeteer.launch({
     headless: 'new',
-    timeout: 30000,
+    timeout: 300000,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
+
   const page = await browser.newPage();
+
   for (let i = 0; i < articles.length; i++) {
-    await page.goto(articles[i].link,{ waitUntil: 'load', timeout: 60000 });
+    try{
+      await page.goto(articles[i].link,{ waitUntil: 'load', timeout: 300000 });
+    }catch(error){
+      console.error(`failed to load page: ${i} th article`,error);
+      continue;//ここで止まらずに次のループに回す。
+    }
     console.log(articles[i].link, " articles[i].link");
     await page.setViewport({width: 1080, height: 1024});
     await page.screenshot({ path: `pdfLog/debug_${i}.png` });
@@ -111,7 +120,15 @@ async function getAmazon(articles) {
     articles[i].amazon.amazonLinksArray.push(...amazonData.amazonLinks);
     articles[i].amazon.amazonTitlesArray.push(...amazonData.amazonTitles);
     articles[i].amazon.amazonImgsArray.push(...amazonData.amazonImgs);
+
+    articlesBatch.push(articles[i]);
+    if(articlesBatch.length === batchSize || i === articles.length - 1){//i === articles.length - 1は最後まで行ったら格納という意味。
+      await insertArticlesAndAmazonsToDB(articlesBatch)
+      console.log(`Inserted batch of ${articlesBatch.length} articles into the database.`);
+      articlesBatch = [];//init
+    }
   }
+
 
   console.log("articles from getAmazon()", articles);
   await browser.close();
@@ -209,6 +226,7 @@ async function scrapeData() {
   }
 
   let connection;
+  let articles = [];
 
   try {
     connection = await createConnection();
@@ -217,7 +235,7 @@ async function scrapeData() {
     // launch browser(https://pptr.dev/)
     const browser = await puppeteer.launch({
       headless: 'new', // was 'new' but i wanted watch logs
-      timeout: 30000,
+      timeout: 300000,
       slowMo: 250, // slow down by 250ms
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
@@ -241,7 +259,7 @@ async function scrapeData() {
       await page.screenshot({ path: `pdfLog/before_scroll_${pngIndex}.png` }); 
 
       //get title,links,likes
-      const articles = await page.evaluate(() => {
+      const scrapedArticles = await page.evaluate(() => {
         const scrapeEles = document.querySelectorAll(".m-largeNoteWrapper");
         //page.evaluateのreturn
         return Array.from(scrapeEles).map(scrapeEle => {
@@ -257,7 +275,7 @@ async function scrapeData() {
         });
       });
 
-      //console.log("articles", articles);
+      articles = articles.concat(scrapedArticles);//変数に逐一データを蓄積させる
 
       //scroll
       console.log("Scrolling...");
@@ -277,7 +295,7 @@ async function scrapeData() {
       console.log(`scraped size: ${scrollTopAfter}`);
       await page.screenshot({ path: `pdfLog/after_scroll_${pngIndex}.png` });       
 
-      //ここをページのスクロールsizeが変化しなくなったら
+      //ここがcountされたあとは、もう一度whileのループに戻っていく。whileの条件がfalseにならない限り。
       if (scrollTopBefore === scrollTopAfter) {
         noScrollCount++;
         console.log(`no scroll detected. attempt ${noScrollCount} of ${maxNoScrollAttempt}`);
@@ -289,6 +307,7 @@ async function scrapeData() {
       }   
       else{
         noScrollCount = 0;//reset
+        console.log("scroll attempt count reset to 0")
       }   
     }
     await browser.close();
@@ -297,7 +316,8 @@ async function scrapeData() {
     return articles;
   } catch (err) {
     console.error('スクレイプ中にエラーが発生しました:', err);
-    return [];
+    isLoadingAvailable = false;//これがないと永遠にwhileが続く。
+    return articles;//timeout errorになってもそれまでのデータを返す。
   } finally {
     if (connection) {
       await connection.end();
@@ -316,7 +336,7 @@ app.get('/ranking', async (req, res) => {
   try {
     connection = await createConnection();
     const [getScrapedDataFromDB] = await connection.execute(`
-WITH RankedArticles AS (
+      WITH RankedArticles AS (
     SELECT 
         a.id AS amazon_id, 
         a.Amazon_link, 
@@ -334,8 +354,6 @@ WITH RankedArticles AS (
         article_amazon aa ON a.id = aa.amazon_id
     JOIN 
         articles art ON aa.article_id = art.id
-    ORDER BY 
-        a.Count DESC
 )
 SELECT 
     Amazon_link, 
@@ -348,8 +366,9 @@ SELECT
 FROM 
     RankedArticles
 WHERE 
-    rn <= 5;
-
+    rn <= 5
+ORDER BY 
+    Count DESC;
 
     `);
     res.status(200).json(getScrapedDataFromDB); // 200 OK と共にデータを送信
@@ -392,6 +411,7 @@ app.get('/start', async(req,res) =>{
   //scrapeデータをDBに入れるだけのコード
   try{
     const articles = await scrapeData();
+    console.log("scrapeData()の結果", articles);
     if(articles.length > 0){
     console.log("getAmazon() will be launch!")
     const validArticles = await getAmazon(articles);
@@ -405,7 +425,7 @@ app.get('/start', async(req,res) =>{
       console.log("amazon.amazonImgs",JSON.stringify(validArticles[i].amazon.amazonImgsArray,null,2));
     }
     console.log("done!!!");
-    await insertArticlesAndAmazonsToDB(validArticles);
+    //await insertArticlesAndAmazonsToDB(validArticles);
     }else{
       res.status(200).send('no scrape data found')
     }
@@ -427,4 +447,36 @@ app.listen(PORT, () => {
 
   
 
-
+// WITH RankedArticles AS (
+//   SELECT 
+//       a.id AS amazon_id, 
+//       a.Amazon_link, 
+//       a.Amazon_title, 
+//       a.Amazon_img, 
+//       a.Count,  -- amazonテーブルのcountを追加
+//       art.id AS article_id, 
+//       art.Article_link, 
+//       art.Article_title, 
+//       art.Article_likes,
+//       ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY art.Article_likes DESC) AS rn
+//   FROM 
+//       amazon a
+//   JOIN 
+//       article_amazon aa ON a.id = aa.amazon_id
+//   JOIN 
+//       articles art ON aa.article_id = art.id
+//   ORDER BY 
+//       a.Count DESC
+// )
+// SELECT 
+//   Amazon_link, 
+//   Amazon_title, 
+//   Amazon_img, 
+//   Count,  -- amazonテーブルのcountを追加
+//   Article_link, 
+//   Article_title, 
+//   Article_likes
+// FROM 
+//   RankedArticles
+// WHERE 
+//   rn <= 5;

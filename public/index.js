@@ -14,41 +14,67 @@ document.addEventListener('DOMContentLoaded', () => {
         // }
 
         let displayData = document.getElementById('ranking-cards');
-        displayData.innerHTML = '';
+        
+
+        let container = document.createElement("div");
+        container.classList.add("container");
+        let row = document.createElement("div");
+        row.classList.add("row");
+        container.appendChild(row);
+        
+        displayData.appendChild(container);
+
+
+
+
+        row.innerHTML = '';
 
         // ループごとに新しいcontainerを作成
         let ranking = 1;
+        // <h1>データ取得数: ${data.length}</h1>
         for (let i = 0; i < data.length; i++) {
-            let container = document.createElement("div");
-            let amazonImage = data[i].Amazon_img != "No images" ? data[i].Amazon_img : "/no-image.png";
+            let card = document.createElement("div");
+            card.classList.add("col-md-3");
 
+            //商品画像がなかった場合
+            let amazonImage = data[i].Amazon_img != "No images" ? data[i].Amazon_img : "/no-image.png";       
+            //20文字以内
+            let amazonTitle = data[i].Amazon_title;
+            if(amazonTitle.length>20){
+                amazonTitle = amazonTitle.slice(0,20) + '...';
+            }
+            let articleTitle = data[i].Article_title;
+            if(articleTitle.length>20){
+                articleTitle = articleTitle.slice(0,20) + '...';
+            }
 
-
-            container.innerHTML = `
-            <div class="card" style="width: 30rem;">
+            card.innerHTML = `
+            <div class="card">
                 <!-- Amazon商品画像 -->
                 <h1>${ranking}</h1>
+                
 
             <a href="${data[i].Amazon_link}" target="_blank" style="color: black; text-decoration: none;">
-                <img src="${amazonImage}" class="card-img-top" alt="...">
+                <img src="${amazonImage}" class="card-img-top img-fluid" style="width: 200px; height: 200px; object-fit: cover;" alt="...">
                 <div class="card-body">
                     <!-- 商品タイトル -->
                     <h5 class="card-title">
-                    ${JSON.stringify(data[i].Amazon_title)} [${JSON.stringify(data[i].Count)} ポイント]
+                    ${amazonTitle} [${JSON.stringify(data[i].Count)} ポイント]
                     </h5>
                     </a>
-                    <!-- 紹介されている記事Top5 -->
-                    <p class="card-text">紹介されている記事 TOP5:</p>
+
+                    <p class="card-text">引用されているnote記事</p>
                     <ul>
                         <!-- 記事 -->
-                        // ここにforを書きたいんだけど、どうすればいいんだろう??
-                        <li>
+                        <li style="list-style: none;">
                         <a href="${data[i].Article_link}" target="_blank">
-                        ${JSON.stringify(data[i].Article_title)}
+                        ${articleTitle}
                         </a>
-                        <i class="bi bi-hand-thumbs-up"></i>${JSON.stringify(data[i].Article_likes)}</li>
+                        <i class="fas fa-thumbs-up"></i>
+                        <i class="fas fa-thumbs-up-fill"></i>
+                        ${JSON.stringify(data[i].Article_likes)}
+                        </li>
                     </ul>
-                    <button style="background-color: #FFA724; color: white;">保留ボタン</button>
 
                 </div>
             </div>
@@ -56,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // カードを表示エリアに追加
             ranking++;
-            displayData.appendChild(container);
+            row.appendChild(card);
         }
     })
     .catch(error => {
@@ -64,36 +90,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-
-[
-    {
-        "Amazon_link": "https://www.amazon.co.jp/dp/B007E66HHS",
-        "Article_link": "https://note.com/mimi_latte/n/nfee47f94ad90",
-        "title": "【ワーホリ準備】渡航前持ち物リスト完全版",
-        "likes": 6
-    },
-    {
-        "Amazon_link": "https://www.amazon.co.jp/dp/B07ZGV9W29",
-        "Article_link": "https://note.com/mimi_latte/n/nfee47f94ad90",
-        "title": "【ワーホリ準備】渡航前持ち物リスト完全版",
-        "likes": 6
-    },
-    {
-        "Amazon_link": "https://www.amazon.co.jp/dp/B07BQHCLPF",
-        "Article_link": "https://note.com/mimi_latte/n/nfee47f94ad90",
-        "title": "【ワーホリ準備】渡航前持ち物リスト完全版",
-        "likes": 6
-    },
-    {
-        "Amazon_link": "https://www.amazon.co.jp/dp/B07F83XM12",
-        "Article_link": "https://note.com/mimi_latte/n/nfee47f94ad90",
-        "title": "【ワーホリ準備】渡航前持ち物リスト完全版",
-        "likes": 6
-    },
-    {
-        "Amazon_link": "https://www.amazon.co.jp/dp/B00J5ARSHY",
-        "Article_link": "https://note.com/mimi_latte/n/nfee47f94ad90",
-        "title": "【ワーホリ準備】渡航前持ち物リスト完全版",
-        "likes": 6
-    }
-]
+{/* <button style="background-color: #FFA724; color: white;">Amazonへ</button> */}
