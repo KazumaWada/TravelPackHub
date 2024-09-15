@@ -38,7 +38,10 @@ async function createConnection() {
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      charset: 'utf8mb4'
+      charset: 'utf8mb4',
+      ssl: {
+        rejectUnauthorized: true,  // 必要に応じて設定
+      }
     });
     console.log('データベースに接続しました');
     return connection;
