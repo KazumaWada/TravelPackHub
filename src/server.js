@@ -13,7 +13,7 @@ const { devNull } = require('os');
 
 // 静的ファイルの提供設定
 app.use(cors({
-  origin: 'http://127.0.0.1:3000', // クライアント側の設定が必要です
+  origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
