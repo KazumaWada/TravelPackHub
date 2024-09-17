@@ -1,3 +1,8 @@
+//開発環境用のpackage.json
+//違いは、pupetterにchorminiumのダウンロードを強制しているところ。
+//herokuではこれを書いていないとエラーになるらしい。
+
+
 {
   "name": "myapp",
   "version": "1.0.0",
@@ -26,8 +31,5 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "debug": "nodemon --inspect=0.0.0.0:9229 src/server.js"
-  },
-  "puppeteer": {
-    "skip_chromium_download": false
   }
 }
