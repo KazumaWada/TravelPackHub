@@ -40,7 +40,7 @@ async function createConnection() {
       database: process.env.DB_NAME,
       charset: 'utf8mb4',
       ssl: {
-        rejectUnauthorized: true,  // 必要に応じて設定
+        rejectUnauthorized: false,  // 必要に応じて設定
       }
     });
     console.log('データベースに接続しました');
