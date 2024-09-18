@@ -67,7 +67,7 @@ async function getAmazon(articles) {
 
   console.log("hello from getAmazon()!");
   const browser = await puppeteer.launch({
-    headless: 'new',
+    headless: 'true',
     timeout: 300000,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
@@ -237,7 +237,7 @@ async function scrapeData() {
 
     // launch browser(https://pptr.dev/)
     const browser = await puppeteer.launch({
-      headless: 'new', // was 'new' but i wanted watch logs
+      headless: 'true', // was 'new' but i wanted watch logs
       timeout: 300000,
       slowMo: 250, // slow down by 250ms
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
