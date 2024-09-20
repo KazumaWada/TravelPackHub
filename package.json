@@ -16,7 +16,7 @@
     "heroku": "^9.2.1",
     "mysql2": "^2.2.5",
     "node-cron": "^3.0.0",
-    "puppeteer": "^19.0.0",
+    "puppeteer": "18.0.0",
     "puppeteer-autoscroll-down": "^1.0.0"
   },
   "devDependencies": {
