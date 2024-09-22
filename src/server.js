@@ -2,7 +2,6 @@
 const express = require('express');
 const app = express();
 const mysql = require('mysql2/promise');
-const path = require('path');
 // const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const { scrollPageToBottom } = require('puppeteer-autoscroll-down')
@@ -10,10 +9,20 @@ const cron = require('node-cron');
 const cors = require('cors');
 const { devNull } = require('os');
 //const dotenv = require('dotenv');
+//for files every scrape data will store.
+const fs = require('fs');
+const path = require('path');
+const readline = require('readline');//read one line of file
 
-// 静的ファイルの提供設定
+// production//
+// app.use(cors({
+//   origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
+//   methods: ['GET', 'POST'],
+//   allowedHeaders: ['Content-Type']
+// }));
+//local//
 app.use(cors({
-  origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
+  origin: 'http://localhost:3000', // クライアント側の設定
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
@@ -53,18 +62,102 @@ async function createConnection() {
 
 //global
 //[海外　持ち物 amazon]
-//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
+const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
 //[海外 持ち物]
-const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
+//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 const root = "https://note.com";
 const articles = [];
 
 
-async function getAmazon(articles) {
-  let batchSize = 50;
-  let articlesBatch = [];
+// async function getAmazon(articles) {
+//   let batchSize = 50;
+//   let articlesBatch = [];
 
+//   console.log("hello from getAmazon()!");
+//   const browser = await puppeteer.launch({
+//     headless: 'true',
+//     timeout: 300000,
+//     args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//   });
+
+//   const page = await browser.newPage();
+
+//   for (let i = 0; i < articles.length; i++) {
+//     try{
+//       await page.goto(articles[i].link,{ waitUntil: 'load', timeout: 300000 });
+//     }catch(error){
+//       console.error(`failed to load page: ${i} th article`,error);
+//       continue;//ここで止まらずに次のループに回す。
+//     }
+//     console.log(articles[i].link, " articles[i].link");
+//     await page.setViewport({width: 1080, height: 1024});
+//     await page.screenshot({ path: `pdfLog/debug_${i}.png` });
+
+//     // Extract Amazon links, titles, and images
+//     const amazonData = await page.evaluate(() => {
+//       //classがexternal~かつ、amznもしくはamazon.co.jpで始まるaタグ。その中のhrefを選択
+//       //const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"]')).map(el => el.href);
+//       const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"], a.external-article-widget-image[href^="https://www.amazon.co.jp"]')).map(el => el.href);
+//       //hrefにamznまたはamazonが含まれている子要素のtitle.(amazon以外の他の記事の被リンクとかも含まれてしまうから。)
+//       const amazonTitles = Array.from(document.querySelectorAll('a[href*="amzn"] strong.external-article-widget-title, a[href*="amazon.co.jp"] strong.external-article-widget-title')).map(el => el.textContent.trim());
+//       //const amazonImgs = Array.from(document.querySelectorAll('span.external-article-widget-productImage')).map(el => el.getAttribute('style'));
+//       const amazonImgsStyle = Array.from(document.querySelectorAll('span.external-article-widget-productImage'));
+//       const amazonImgs = amazonImgsStyle.map(el => {
+//         const style = window.getComputedStyle(el);
+//         const backgroundImage = style.getPropertyValue('background-image');
+//         return backgroundImage.slice(5, -2); // Remove "url(" and ")"
+//     });
+//       //background-image: url(https://m.media-amazon.com/images/I/31J2A5waiVL._SL500_.jpg);
+//       //この下のコードのせいでたまにimgがなくなってるのかもしれない。フロントにデータを送信するときに整形すればいい。
+//       // .map(el => {
+//       // const style = el.getAttribute('style');
+//       // const match = style.match(/url\("?(https:\/\/[^"]+)"?\)/);
+//       // return match ? match[1] : null;
+//       // });
+      
+//       return { amazonLinks, amazonTitles, amazonImgs };
+//     });
+
+//     // Initialize amazon property
+//     if (!articles[i].amazon) {
+//       articles[i].amazon = {
+//         amazonLinksArray: [],
+//         amazonTitlesArray: [],
+//         amazonImgsArray: []
+//       };
+//     }
+
+//     // Push the extracted data
+//     articles[i].amazon.amazonLinksArray.push(...amazonData.amazonLinks);
+//     articles[i].amazon.amazonTitlesArray.push(...amazonData.amazonTitles);
+//     articles[i].amazon.amazonImgsArray.push(...amazonData.amazonImgs);
+
+//        // Save data to file periodically
+//        if (i % 100 === 0 || i === articles.length - 1) {
+//         const formattedArticles = articles.map(article => ({
+//           link: article.link,
+//           likes: article.likes,
+//           title: article.title,
+//           amazon: article.amazon
+//         }));
+//         fs.writeFileSync('scraped_data.json', JSON.stringify(formattedArticles, null, 2));
+//         console.log(`Data for ${i + 1} articles saved to file.`);
+//       }
+//     // articlesBatch.push(articles[i]);
+//     // if(articlesBatch.length === batchSize || i === articles.length - 1){//i === articles.length - 1は最後まで行ったら格納という意味。
+//     //   await insertArticlesAndAmazonsToDB(articlesBatch)
+//     //   console.log(`Inserted batch of ${articlesBatch.length} articles into the database.`);
+//     //   articlesBatch = [];//init
+//     // }
+//   }
+
+
+//   console.log("articles from getAmazon()", articles);
+//   await browser.close();
+//   return articles;
+// }
+async function getAmazon() {
   console.log("hello from getAmazon()!");
   const browser = await puppeteer.launch({
     headless: 'true',
@@ -74,20 +167,112 @@ async function getAmazon(articles) {
 
   const page = await browser.newPage();
 
-  for (let i = 0; i < articles.length; i++) {
-    try{
-      await page.goto(articles[i].link,{ waitUntil: 'load', timeout: 300000 });
-    }catch(error){
-      console.error(`failed to load page: ${i} th article`,error);
-      continue;//ここで止まらずに次のループに回す。
+  try {
+    const filePath = path.join(__dirname, 'file.json');
+    console.log('Attempting to read file:', filePath);
+    
+    const fileStream = fs.createReadStream(filePath);
+    
+    fileStream.on('error', (error) => {
+      console.error('Error reading file:', error);
+    });
+  
+    console.log("loading file.json...");
+    
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    let batchSize = 51;
+    let articlesBatch = [];
+    let currentArticle = {};
+    let lineCount = 0;
+    let inArticle = false;
+   
+    for await (const line of rl) {
+      console.log("you are inside of a loop!!")
+      lineCount++;
+      
+      if (lineCount === 1 || line.trim() === ']') continue;
+  
+      if (line.trim() === '{') {
+        console.log("記事の中に入った!")
+        inArticle = true;
+        currentArticle = {};
+        continue;
+      }
+  
+      if (line.trim() === '},') {
+        console.log("記事の外に出た!");
+        inArticle = false;
+        if (Object.keys(currentArticle).length === 3) {
+          await processArticle(page, currentArticle);
+          articlesBatch.push(currentArticle);
+          //amazon記事が51を超えたら、DBは置いといて一旦ファイルに書きこむ
+          if (articlesBatch.length >= batchSize / 3) {
+            //await insertArticlesAndAmazonsToDB(articlesBatch);
+            fs.writeFileSync('articleWithAmazon.json', JSON.stringify(articlesBatch,null,2));
+            console.log(`Inserted batch of ${articlesBatch.length} articles into the database.`);
+            articlesBatch = [];//メモリ解放
+          }
+        }
+        continue;
+      }
+
+      if (inArticle) {
+        console.log("記事の中身を見ているよ")
+        const colonIndex = line.indexOf(':');
+        if (colonIndex !== -1) {
+          const key = line.slice(0, colonIndex).trim().replace(/[",]/g, '');
+          let value = line.slice(colonIndex + 1).trim();
+          
+          // Remove surrounding quotes, including escaped quotes
+          value = value.replace(/^"+|"+$/g, '');
+          
+          // Remove trailing comma if present
+          value = value.replace(/,$/g, '');
+          
+          // Special handling for URLs: remove any remaining quote at the end
+          if (key === 'link') {
+            value = value.replace(/"$/, '');
+          }
+          
+          // For "likes", ensure it's a number
+          if (key === 'likes') {
+            value = parseInt(value, 10);
+          }
+          
+          currentArticle[key] = value;
+        }
+        //const [key, value] = line.split(':').map(part => part.trim().replace(/[",]/g, ''));
+      }
     }
-    console.log(articles[i].link, " articles[i].link");
+
+    // Process any remaining articles
+    if (articlesBatch.length > 0) {
+      await insertArticlesAndAmazonsToDB(articlesBatch);
+      console.log(`Inserted final batch of ${articlesBatch.length} articles into the database.`);
+    }
+
+    console.log("Finished processing all articles");
+  } catch (error) {
+    console.error('Error processing file:', error);
+  } finally {
+    await browser.close();
+  }
+}
+
+async function processArticle(page, article) {
+  try {
+    await page.goto(article.link, { waitUntil: 'load', timeout: 300000 });
+    console.log(article.link, " article.link");
     await page.setViewport({width: 1080, height: 1024});
-    await page.screenshot({ path: `pdfLog/debug_${i}.png` });
+    await page.screenshot({ path: `pdfLog/debug_${article.link.replace(/[^a-zA-Z0-9]/g, '_')}.png` });
 
     // Extract Amazon links, titles, and images
     const amazonData = await page.evaluate(() => {
-      //classがexternal~かつ、amznもしくはamazon.co.jpで始まるaタグ。その中のhrefを選択
+    //classがexternal~かつ、amznもしくはamazon.co.jpで始まるaタグ。その中のhrefを選択
       //const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"]')).map(el => el.href);
       const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"], a.external-article-widget-image[href^="https://www.amazon.co.jp"]')).map(el => el.href);
       //hrefにamznまたはamazonが含まれている子要素のtitle.(amazon以外の他の記事の被リンクとかも含まれてしまうから。)
@@ -99,20 +284,13 @@ async function getAmazon(articles) {
         const backgroundImage = style.getPropertyValue('background-image');
         return backgroundImage.slice(5, -2); // Remove "url(" and ")"
     });
-      //background-image: url(https://m.media-amazon.com/images/I/31J2A5waiVL._SL500_.jpg);
-      //この下のコードのせいでたまにimgがなくなってるのかもしれない。フロントにデータを送信するときに整形すればいい。
-      // .map(el => {
-      // const style = el.getAttribute('style');
-      // const match = style.match(/url\("?(https:\/\/[^"]+)"?\)/);
-      // return match ? match[1] : null;
-      // });
       
       return { amazonLinks, amazonTitles, amazonImgs };
     });
 
     // Initialize amazon property
-    if (!articles[i].amazon) {
-      articles[i].amazon = {
+    if (!article.amazon) {
+      article.amazon = {
         amazonLinksArray: [],
         amazonTitlesArray: [],
         amazonImgsArray: []
@@ -120,25 +298,14 @@ async function getAmazon(articles) {
     }
 
     // Push the extracted data
-    articles[i].amazon.amazonLinksArray.push(...amazonData.amazonLinks);
-    articles[i].amazon.amazonTitlesArray.push(...amazonData.amazonTitles);
-    articles[i].amazon.amazonImgsArray.push(...amazonData.amazonImgs);
-
-    articlesBatch.push(articles[i]);
-    if(articlesBatch.length === batchSize || i === articles.length - 1){//i === articles.length - 1は最後まで行ったら格納という意味。
-      await insertArticlesAndAmazonsToDB(articlesBatch)
-      console.log(`Inserted batch of ${articlesBatch.length} articles into the database.`);
-      articlesBatch = [];//init
-    }
+    //ここをfileにpushする必要がある。
+    article.amazon.amazonLinksArray.push(...amazonData.amazonLinks);
+    article.amazon.amazonTitlesArray.push(...amazonData.amazonTitles);
+    article.amazon.amazonImgsArray.push(...amazonData.amazonImgs);
+  } catch (error) {
+    console.error(`Error processing article ${article.link}:`, error);
   }
-
-
-  console.log("articles from getAmazon()", articles);
-  await browser.close();
-  return articles;
 }
-
-
 
 async function insertArticlesAndAmazonsToDB(articles) {
   const connection = await createConnection();
@@ -256,7 +423,7 @@ async function scrapeData() {
     //let scrapeIndex = 0;
     while (isLoadingAvailable) {
       pngIndex++;
-      //サイト内でjavascriptを実行。最初は0 use for debug
+      //[debug]
       const scrollTopBefore = await page.evaluate(() => document.documentElement.scrollTop);
       console.log(`ScrollTop before: ${scrollTopBefore}`);
       await page.screenshot({ path: `pdfLog/before_scroll_${pngIndex}.png` }); 
@@ -280,25 +447,31 @@ async function scrapeData() {
 
       articles = articles.concat(scrapedArticles);//変数に逐一データを蓄積させる
 
-      //scroll
-      console.log("Scrolling...");
+      //scraped data store in file
+      console.log("numbers of articles elements found:", articles.length);
+      if (articles.length > 100) { // 一定の数を超えたらファイルに保存
+      console.log(articles.length, "this is articles number so we gonna put it into file!");
+      fs.writeFileSync('file.json', JSON.stringify(articles, null, 2)); // 正常に動作
+      articles = []; // メモリを解放
+      console.log("scraped data inserted to file.")
+}
 
+      //[debug]
+      console.log("Scrolling...");
       await scrollPageToBottom(page, {
         size: 500,
         delay: 500, //accouding to pptr.dev, they wrote "size" only.
         stepsLimit: 10
       });
-
-      //debug
       console.log("Scroll completed.");
       console.log("numbers of articles elements found:", articles.length);
 
-      //debug 現在地から上まで測る。
+      //[debug]
       const scrollTopAfter = await page.evaluate(() => document.documentElement.scrollTop);
       console.log(`scraped size: ${scrollTopAfter}`);
       await page.screenshot({ path: `pdfLog/after_scroll_${pngIndex}.png` });       
 
-      //ここがcountされたあとは、もう一度whileのループに戻っていく。whileの条件がfalseにならない限り。
+      //if still need to sccrape or not
       if (scrollTopBefore === scrollTopAfter) {
         noScrollCount++;
         console.log(`no scroll detected. attempt ${noScrollCount} of ${maxNoScrollAttempt}`);
@@ -313,6 +486,7 @@ async function scrapeData() {
         console.log("scroll attempt count reset to 0")
       }   
     }
+
     await browser.close();
     console.log('ブラウザを閉じました');
     hasScraped = true;
@@ -413,25 +587,23 @@ ORDER BY
 app.get('/start', async(req,res) =>{
   //scrapeデータをDBに入れるだけのコード
   try{
-    const articles = await scrapeData();
-    console.log("scrapeData()の結果", articles);
-    if(articles.length > 0){
-    console.log("getAmazon() will be launch!")
-    const validArticles = await getAmazon(articles);
-    console.log("validArticles", validArticles);
+    //file.jsonが既にできてるから一旦コメントアウト
+    //await scrapeData();
+    console.log("getAmazon will be launch!")
+    //const validArticles = 
+    await getAmazon();
+    //console.log("validArticles", validArticles);
     //debug
-    for(let i=0; i<9; i++){
-      console.log("debug each amazon but just 10.")
-      console.log("link->", JSON.stringify(validArticles[i].link));
-      console.log("amazon.amazonLinks",JSON.stringify(validArticles[i].amazon.amazonLinksArray,null,2));
-      console.log("amazon.amazonTitles",JSON.stringify(validArticles[i].amazon.amazonTitlesArray,null,2));
-      console.log("amazon.amazonImgs",JSON.stringify(validArticles[i].amazon.amazonImgsArray,null,2));
-    }
+    // for(let i=0; i<9; i++){
+    //   console.log("debug each amazon but just 10.")
+    //   console.log("link->", JSON.stringify(validArticles[i].link));
+    //   console.log("amazon.amazonLinks",JSON.stringify(validArticles[i].amazon.amazonLinksArray,null,2));
+    //   console.log("amazon.amazonTitles",JSON.stringify(validArticles[i].amazon.amazonTitlesArray,null,2));
+    //   console.log("amazon.amazonImgs",JSON.stringify(validArticles[i].amazon.amazonImgsArray,null,2));
+    // }
     console.log("done!!!");
     //await insertArticlesAndAmazonsToDB(validArticles);
-    }else{
-      res.status(200).send('no scrape data found')
-    }
+   
     
 
     //res.status(200): HTTPのレスポンスステータスコード

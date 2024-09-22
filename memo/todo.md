@@ -84,3 +84,39 @@ herokuでデプロイできた。次は、originとかのurlを変える必要�
 2024-09-15T07:54:49.423532+00:00 app[web.1]:   sqlState: undefined
 2024-09-15T07:54:49.423532+00:00 app[web.1]: }
 2024-09-15T07:54:49.423646+00:00 app[web.1]: scrapeData()の結果 []
+
+
+9/22
+articleをデータに全て格納する[done!]
+article.amazonで結果を全てデータに格納する。[]
+# 今
+は、articleのurlがちゃんと取れていない&&プロトコルエラーみたいになっている。よくわからん。落ち着いて紙に書いて理解してからコード書く。最初のarticleではちゃんと取れてるけどarticle.amazonになると取れなくなるからそこを確認する。
+```json
+[
+  {
+    "link": "https",//ここ!あとamazonが一切ない。
+    "title": "【保存版】女性のための海外旅行の持ち物リストまとめ｜意外すぎる！？便利クッズも",
+    "likes": "73"
+  },
+```
+```shell
+app-1  | Error processing article https: ProtocolError: Protocol error (Page.navigate): Cannot navigate to invalid URL
+app-1  |     at /app/node_modules/puppeteer/lib/cjs/puppeteer/common/Connection.js:329:24
+app-1  |     at new Promise (<anonymous>)
+app-1  |     at CDPSessionImpl.send (/app/node_modules/puppeteer/lib/cjs/puppeteer/common/Connection.js:325:16)
+app-1  |     at navigate (/app/node_modules/puppeteer/lib/cjs/puppeteer/common/Frame.js:228:47)
+app-1  |     at Frame.goto (/app/node_modules/puppeteer/lib/cjs/puppeteer/common/Frame.js:206:13)
+app-1  |     at Page.goto (/app/node_modules/puppeteer/lib/cjs/puppeteer/common/Page.js:1165:88)
+app-1  |     at processArticle (/app/src/server.js:246:16)
+app-1  |     at getAmazon (/app/src/server.js:210:17)
+app-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+app-1  |     at async /app/src/server.js:572:5 {
+app-1  |   originalMessage: 'Cannot navigate to invalid URL'
+app-1  | }
+
+```
+DBにファイルからデータをとってきてデータに格納する[]
+
+9/23
+まあ、なんとかarticleAmazonをファイルに格納することができた。
+次はそのファイルを取り出してDBに格納する。
