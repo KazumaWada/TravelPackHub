@@ -68,4 +68,5 @@ CMD ["npm", "start"]
 # ポートを公開
 #EXPOSE 3000
 #debug mode 
-#EXPOSE 3000 9229 <- herokuを使っているので、コメントアウト
+EXPOSE 3000 9229 
+#↑ herokuを使っているのであとでコメントアウト
