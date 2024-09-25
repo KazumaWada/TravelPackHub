@@ -120,3 +120,114 @@ DBにファイルからデータをとってきてデータに格納する[]
 9/23
 まあ、なんとかarticleAmazonをファイルに格納することができた。
 次はそのファイルを取り出してDBに格納する。
+
+9/23
+getAmazon()が、無限ループになっている。コードもファイルから一行ずつ出しているから読むのがめんどくさい。ファイルをjsonのようにして取り出すことができれば便利。だからそうする。
+
+```javascript
+const fs = require('fs');
+const path = require('path');
+const puppeteer = require('puppeteer');
+
+async function getAmazon() {
+  console.log("hello from getAmazon()!");
+  const browser = await puppeteer.launch({
+    headless: 'true',
+    timeout: 300000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  const page = await browser.newPage();
+
+  try {
+    const filePath = path.join(__dirname, 'file.json');
+    console.log('Attempting to read file:', filePath);
+
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    //ここでjsonにしている。
+    const articles = JSON.parse(fileContent);
+    console.log("Loaded JSON data from file.json");
+
+    let batchSize = 51;
+    let articlesBatch = [];
+
+    for (const article of articles) {
+      console.log("Processing article:", article);
+      await processArticle(page, article);
+      articlesBatch.push(article);
+
+      // If the batch size exceeds the limit, write to the file
+      if (articlesBatch.length >= batchSize / 3) {
+        fs.writeFileSync('articleWithAmazon.json', JSON.stringify(articlesBatch, null, 2));
+        console.log(`Inserted batch of ${articlesBatch.length} articles into the file.`);
+        articlesBatch = []; // Clear the batch
+      }
+    }
+
+    // Write any remaining articles to the file
+    if (articlesBatch.length > 0) {
+      fs.writeFileSync('articleWithAmazon.json', JSON.stringify(articlesBatch, null, 2));
+      console.log(`Inserted final batch of ${articlesBatch.length} articles into the file.`);
+    }
+
+    console.log("Finished processing all articles");
+  } catch (error) {
+    console.error('Error processing file:', error);
+  } finally {
+    console.log("articles.amazon done");
+    await browser.close();
+  }
+}
+
+async function processArticle(page, article) {
+  try {
+    await page.goto(article.link, { waitUntil: 'load', timeout: 300000 });
+    console.log(article.link, " article.link");
+    await page.setViewport({width: 1080, height: 1024});
+    await page.screenshot({ path: `pdfLog/debug_${article.link.replace(/[^a-zA-Z0-9]/g, '_')}.png` });
+
+    // Extract Amazon links, titles, and images
+    const amazonData = await page.evaluate(() => {
+      const amazonLinks = Array.from(document.querySelectorAll('a.external-article-widget-image[href^="https://amzn"], a.external-article-widget-image[href^="https://www.amazon.co.jp"]')).map(el => el.href);
+      const amazonTitles = Array.from(document.querySelectorAll('a[href*="amzn"] strong.external-article-widget-title, a[href*="amazon.co.jp"] strong.external-article-widget-title')).map(el => el.textContent.trim());
+      const amazonImgsStyle = Array.from(document.querySelectorAll('span.external-article-widget-productImage'));
+      const amazonImgs = amazonImgsStyle.map(el => {
+        const style = window.getComputedStyle(el);
+        const backgroundImage = style.getPropertyValue('background-image');
+        return backgroundImage.slice(5, -2); // Remove "url(" and ")"
+      });
+
+      return { amazonLinks, amazonTitles, amazonImgs };
+    });
+
+    // Initialize amazon property
+    if (!article.amazon) {
+      article.amazon = {
+        amazonLinksArray: [],
+        amazonTitlesArray: [],
+        amazonImgsArray: []
+      };
+    }
+
+    // Push the extracted data
+    article.amazon.amazonLinksArray.push(...amazonData.amazonLinks);
+    article.amazon.amazonTitlesArray.push(...amazonData.amazonTitles);
+    article.amazon.amazonImgsArray.push(...amazonData.amazonImgs);
+  } catch (error) {
+    console.error(`Error processing article ${article.link}:`, error);
+  }
+}
+```
+
+このコードでgetAmazon(fileから読み込む、変数に51件格納したら新しいファイルへ。)が正しく後いたら、insertに映る。
+
+# 今
+今データをjsonでわかりやすくしたから、今度はなんで止まっているのか確かめる
+ [nodemon] restarting due to changes...が関数の途中で実行されてしまっている。多分getAmazonの中で何かが起きている。
+ ↓
+ ファイルが更新されてsaveされたからdetectしてしまったのかもしれない。
+ ↓
+ またtimeout errorになってしまった。
+ ↓
+ 
+ 次は、本番で多くのスクレイプデータを取得して成功したら、herokuへデプロイする。
