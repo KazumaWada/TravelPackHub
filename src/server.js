@@ -16,18 +16,18 @@ const readline = require('readline');
 const JSONStream = require('JSONStream');
 
 
-// production//
-// app.use(cors({
-//   origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
-//   methods: ['GET', 'POST'],
-//   allowedHeaders: ['Content-Type']
-// }));
-//local//
+production//
 app.use(cors({
-  origin: 'http://localhost:3000', // クライアント側の設定
+  origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
+//local//
+// app.use(cors({
+//   origin: 'http://localhost:3000', // クライアント側の設定
+//   methods: ['GET', 'POST'],
+//   allowedHeaders: ['Content-Type']
+// }));
 //userが/dirにアクセスしたときに、こっちがpublic/dirを返す。
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/ranking', express.static('ranking'));
@@ -64,13 +64,10 @@ async function createConnection() {
 
 //global
 //[海外　持ち物 amazon]
-const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
+//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
 //[海外 持ち物]
-//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
+const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
-const articles = [];
-
-
 
 function appendToFile(filename, data) {
   // Read existing data
@@ -112,7 +109,7 @@ async function getAmazon() {
     let batchSize = 51;
     let articlesBatch = [];
     let processedCount = 0;
-    const maxToProcess = 100; //本番ではwebサイトの件数と合わせる
+    const maxToProcess = 6500; //url has approximatly 7000 so i set below 7000 to make sure no error occur.
     ////////////////infinity loop///////////////////////////////////////
     for (const article of articles) {
       if (processedCount >= maxToProcess) {
@@ -473,8 +470,8 @@ ORDER BY
 app.get('/start', async(req,res) =>{
   //scrapeデータをDBに入れるだけのコード
   try{
-    //await scrapeData(); commentout will be clear in local when scrape need 
-    //await getAmazon(); commentout will be clear in local when scrape need 
+    //await scrapeData(); //commentout will be off　in local when scrape need 
+    //await getAmazon(); //commentout will be off in local when scrape need 
     await insertArticlesAndAmazonsToDB();//active in production.
     console.log("done!!!");
     //res.status(200).send('scrape done');

@@ -19,8 +19,8 @@ services:
       - .:/app
       - /app/node_modules
     # npm installとdebugをミックスしている。
-    command: sh -c "npm install && npm run debug" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
-    #command: npm start  # 本番環境では通常スタートスクリプトだけで十分
+    #command: sh -c "npm install && npm run debug" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
+    command: npm start  # 本番環境では通常スタートスクリプトだけで十分
 
   db:
     image: mysql:8.0
