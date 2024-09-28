@@ -26,7 +26,6 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "heroku-postbuild": "bash postbuild.bash",
     "debug": "nodemon --inspect=0.0.0.0:9229 src/server.js"
   }
 }
