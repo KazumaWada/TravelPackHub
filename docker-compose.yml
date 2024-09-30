@@ -9,11 +9,17 @@ services:
       # - "9229:9229"  # debug mode
     depends_on:
       - db
+    ## local ##
+    # environment:
+    #   - DB_HOST=db
+    #   - DB_USER=root
+    #   - DB_PASSWORD=example
+    #   - DB_NAME=mydatabase
+    ## production ##
     environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASSWORD=example
-      - DB_NAME=mydatabase
+      - NODE_ENV=production
+      - JAWSDB_URL=${JAWSDB_URL}  # HerokuのJawsDBのURLを参照
+
     volumes:
     #- <ホストのパス>:<コンテナのパス>
       - .:/app
@@ -32,7 +38,7 @@ services:
       - "3306:3306"  
     volumes:
       - db_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql #productionのjawsDBではこれを実行する機能がない。
         # root@d0a83b8f94d1:/app# ls /etc/mysql/
         # my.cnf->pathはok!
       - ./my.cnf:/etc/mysql/my.cnf #文字化け対策

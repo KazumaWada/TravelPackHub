@@ -2,13 +2,12 @@
 const express = require('express');
 const app = express();
 const mysql = require('mysql2/promise');
-// const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const { scrollPageToBottom } = require('puppeteer-autoscroll-down')
 const cron = require('node-cron');
 const cors = require('cors');
 const { devNull } = require('os');
-//const dotenv = require('dotenv');
+const dotenv = require('dotenv').config;//for proccess.env
 //for files every scrape data will store.
 const fs = require('fs');
 const path = require('path');
@@ -16,7 +15,7 @@ const readline = require('readline');
 const JSONStream = require('JSONStream');
 
 
-production//
+//production//
 app.use(cors({
   origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
   methods: ['GET', 'POST'],
@@ -33,7 +32,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/ranking', express.static('ranking'));
 app.use('/start', express.static('start'));
 
-// 環境変数の設定
+// 環境変数の設定.envファイル
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
@@ -41,31 +40,49 @@ if (process.env.NODE_ENV !== 'production') {
 // プロセスのリスナーの上限を設定
 process.setMaxListeners(30); // Increase the limit
 
-// MySQLデータベース接続設定
-async function createConnection() {
-  try {
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      charset: 'utf8mb4',
-      ssl: {
-        rejectUnauthorized: false,  // 必要に応じて設定
-      }
-    });
-    console.log('データベースに接続しました');
-    return connection;
-  } catch (err) {
-    console.error('データベース接続エラー:', err);
+// MySQLデータベース接続設定(local)//
+// async function createConnection() {
+//   try {
+//     const connection = await mysql.createConnection({
+//       host: process.env.DB_HOST,
+//       user: process.env.DB_USER,
+//       password: process.env.DB_PASSWORD,
+//       database: process.env.DB_NAME,
+//       charset: 'utf8mb4',
+//       ssl: {
+//         rejectUnauthorized: false,  // 必要に応じて設定
+//       }
+//     });
+//     console.log('データベースに接続しました');
+//     return connection;
+//   } catch (err) {
+//     console.error('データベース接続エラー:', err);
+//     throw err;
+//   }
+// }
+
+
+// MySQLデータベース接続設定(production)//
+//https://devcenter.heroku.com/articles/jawsdb#using-jawsdb-with-node-js
+async function createConnection(){
+  let connection//どのスコープからも利用可能にするため。まだundefinedでも、
+  try{
+  const connection = await mysql.createConnection(process.env.JAWSDB_URL);
+  connection.connect();  
+  console.log("データベースに接続しました");
+  return connection;
+  //connection.end();
+  }catch(err){
+    console.log("データベース接続エラー:", err);
     throw err;
+  } finally{
+    if(connection){
+      await connection.end();
+      console.log("データベース接続を閉じました from createConnection()");
+    }
   }
 }
-
-//global
-//[海外　持ち物 amazon]
-//const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20amazon&context=note&mode=search";
-//[海外 持ち物]
+//ここも環境変数に入れておく->.env->.gitignore
 const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done
 
@@ -194,7 +211,7 @@ async function insertArticlesAndAmazonsToDB() {
   // let count = 0;
 
   try {
-    const filePath = path.join('articleWithAmazon.json');
+    const filePath = path.join(__dirname, 'articleWithAmazon.json');
     console.log(filePath, "<- filePath from insertDB func");
     // Read the entire file content
     const fileContent = fs.readFileSync(filePath, 'utf8');
@@ -209,6 +226,7 @@ async function insertArticlesAndAmazonsToDB() {
 
         if (!article.amazon || article.amazon.amazonTitlesArray.length == 0) {
           console.log("article.amazon.amazonLinksArrayは空です。");
+          console.log(filePath, "<- filePath from insertDB func");
           continue;
         } else {
           // ARTICLE TABLE
@@ -390,9 +408,55 @@ async function scrapeData() {
   }
 }
 
-let connection;
 // ブラウザへ出力するエンドポイント
+// app.get('/ranking', async (req, res) => {
+//   try {
+//     connection = await createConnection();
+//     const [getScrapedDataFromDB] = await connection.execute(`
+//       WITH RankedArticles AS (
+//     SELECT 
+//         a.id AS amazon_id, 
+//         a.Amazon_link, 
+//         a.Amazon_title, 
+//         a.Amazon_img, 
+//         a.Count,  -- amazonテーブルのcountを追加
+//         art.id AS article_id, 
+//         art.Article_link, 
+//         art.Article_title, 
+//         art.Article_likes,
+//         ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY art.Article_likes DESC) AS rn
+//     FROM 
+//         amazon a
+//     JOIN 
+//         article_amazon aa ON a.id = aa.amazon_id
+//     JOIN 
+//         articles art ON aa.article_id = art.id
+// )
+// SELECT 
+//     Amazon_link, 
+//     Amazon_title, 
+//     Amazon_img, 
+//     Count,  -- amazonテーブルのcountを追加
+//     Article_link, 
+//     Article_title, 
+//     Article_likes
+// FROM 
+//     RankedArticles
+// WHERE 
+//     rn <= 5
+// ORDER BY 
+//     Count DESC;
+
+//     `);
+//     res.status(200).json(getScrapedDataFromDB); // 200 OK と共にデータを送信
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Failed to fetch articles' }); // エラーメッセージを送信
+//   }
+// });
+
 app.get('/ranking', async (req, res) => {
+  let connection;
   try {
     connection = await createConnection();
     const [getScrapedDataFromDB] = await connection.execute(`
@@ -429,42 +493,20 @@ WHERE
     rn <= 5
 ORDER BY 
     Count DESC;
-
     `);
-    res.status(200).json(getScrapedDataFromDB); // 200 OK と共にデータを送信
+    res.status(200).json(getScrapedDataFromDB);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to fetch articles' }); // エラーメッセージを送信
+    console.error('Error in /ranking endpoint:', error);
+    res.status(500).json({ message: 'Failed to fetch articles', error: error.message });
+  } finally {
+    if (connection) {
+      try {
+        await connection.end();
+      } catch (closeError) {
+        console.error('Error closing database connection:', closeError);
+      }
+    }
   }
-
-   
-
-  // try{
-  //   connection = await createConnection();
-  //     //get amazonLinks.link(商品ランキング) && article.link,.title(紹介されている記事top5)
-  //   const [rows] = await connection.execute(`
-  //   WITH TopAmazonLink AS (
-  //     SELECT id, Amazon_link
-  //     FROM amazon_links
-  //     ORDER BY Count DESC
-  //     LIMIT 5
-  //     )
-  //   SELECT 
-  //     TopAmazonLink.Amazon_link,
-  //     articles.Article_link, 
-  //     articles.title,  
-  //     articles.likes
-  //   FROM TopAmazonLink
-  //   JOIN article_amazon ON TopAmazonLink.id = article_amazon.amazon_id
-  //   JOIN articles ON article_amazon.article_id = articles.id
-  //   ORDER BY articles.likes DESC;
-  //   `);
-  //   //フロントを確認したら、rowsにamazonのリンクが入っていなかった。多分書き方がおかしいんだと思う。
-  //   res.json(rows);//フロントへ送信
-  // }catch(error){
-  //   console.error('error fetching ranking data: ', error);
-  //   res.status(500).json({error: 'internal server error'});
-  // }
 });
 //travelpackhub.com/startに対してフロントからのリクエスト、バックエンドからのレスポンスをそれぞれ書くのがhttpリクエスト
 app.get('/start', async(req,res) =>{
