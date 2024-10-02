@@ -40,42 +40,39 @@ document.addEventListener('DOMContentLoaded', () => {
             let amazonImage = data[i].Amazon_img != "No images" ? data[i].Amazon_img : "/no-image.png";       
             //20文字以内
             let amazonTitle = data[i].Amazon_title;
-            if(amazonTitle.length>20){
-                amazonTitle = amazonTitle.slice(0,20) + '...';
+            if(amazonTitle.length>30){
+                amazonTitle = amazonTitle.slice(0,30) + '...';
             }
             let articleTitle = data[i].Article_title;
-            if(articleTitle.length>20){
-                articleTitle = articleTitle.slice(0,20) + '...';
+            if(articleTitle.length>30){
+                articleTitle = articleTitle.slice(0,30) + '...';
             }
 
             card.innerHTML = `
             <div class="card">
                 <!-- Amazon商品画像 -->
-                <h1>${ranking}</h1>
+               <!--  <h1>${ranking}</h1> -->
                 
 
             <a href="${data[i].Amazon_link}" target="_blank" style="color: black; text-decoration: none;">
                 <img src="${amazonImage}" class="card-img-top img-fluid" style="width: 200px; height: 200px; object-fit: cover;" alt="...">
                 <div class="card-body">
                     <!-- 商品タイトル -->
-                    <h5 class="card-title">
-                    ${amazonTitle} [${JSON.stringify(data[i].Count)} ポイント]
-                    </h5>
+                     <h5 class="card-title">
+                     ${amazonTitle} <!--[${JSON.stringify(data[i].Count)} ポイント] -->
+                     </h5>
                     </a>
 
-                    <p class="card-text">引用されているnote記事</p>
-                    <ul>
+                    <!-- <p class="card-text" style="color: gray;">[紹介されている記事]</p> -->
+                    <span class="card-text">紹介されている記事</span>
                         <!-- 記事 -->
                         <li style="list-style: none;">
                         <a href="${data[i].Article_link}" target="_blank">
                         ${articleTitle}
                         </a>
-                        <i class="fas fa-thumbs-up"></i>
-                        <i class="fas fa-thumbs-up-fill"></i>
-                        ${JSON.stringify(data[i].Article_likes)}
+                        [${JSON.stringify(data[i].Article_likes)}いいね]
                         </li>
-                    </ul>
-
+                    
                 </div>
             </div>
             `;
