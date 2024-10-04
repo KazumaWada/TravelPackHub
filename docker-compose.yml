@@ -10,23 +10,23 @@ services:
     depends_on:
       - db
     ## local ##
-    environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASSWORD=example
-      - DB_NAME=mydatabase
-    ## production ##
     # environment:
-    #   - NODE_ENV=production
-    #   - JAWSDB_URL=${JAWSDB_URL}  # HerokuのJawsDBのURLを参照
+    #   - DB_HOST=db
+    #   - DB_USER=root
+    #   - DB_PASSWORD=example
+    #   - DB_NAME=mydatabase
+    ## production ##
+    environment:
+      - NODE_ENV=production
+      - JAWSDB_URL=${JAWSDB_URL}  # HerokuのJawsDBのURLを参照
 
     volumes:
     #- <ホストのパス>:<コンテナのパス>
       - .:/app
       - /app/node_modules
     # npm installとdebugをミックスしている。
-    command: sh -c "npm install && npm run debug" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
-    #command: npm start  # 本番環境では通常スタートスクリプトだけで十分
+    #command: sh -c "npm install && npm run debug" #nodemanの追加&nodemoduleをvolumeにマウントして毎回実行させないようにさせるあとで。
+    command: npm start  # 本番環境では通常スタートスクリプトだけで十分
 
   db:
     image: mysql:8.0

@@ -13,24 +13,26 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 //const JSONStream = require('JSONStream');
+const aboutRouter = require('./about/about');
 
 
 //production//
-// app.use(cors({
-//   origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
-//   methods: ['GET', 'POST'],
-//   allowedHeaders: ['Content-Type']
-// }));
-//local//
 app.use(cors({
-  origin: 'http://localhost:3000', // クライアント側の設定
+  origin: 'https://immense-gorge-49291-332a19223c9e.herokuapp.com', // クライアント側の設定が必要です
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
+//local//
+// app.use(cors({
+//   origin: 'http://localhost:3000', // クライアント側の設定
+//   methods: ['GET', 'POST'],
+//   allowedHeaders: ['Content-Type']
+// }));
 //userが/dirにアクセスしたときに、こっちがpublic/dirを返す。
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/ranking', express.static('ranking'));
 app.use('/start', express.static('start'));
+app.use('/about', aboutRouter);
 
 // 環境変数の設定.envファイル
 if (process.env.NODE_ENV !== 'production') {
@@ -41,47 +43,47 @@ if (process.env.NODE_ENV !== 'production') {
 process.setMaxListeners(30); // Increase the limit
 
 // MySQLデータベース接続設定(local)//
-async function createConnection() {
-  try {
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      charset: 'utf8mb4',
-      ssl: {
-        rejectUnauthorized: false,  // 必要に応じて設定
-      }
-    });
-    console.log('データベースに接続しました');
-    return connection;
-  } catch (err) {
-    console.error('データベース接続エラー:', err);
-    throw err;
-  }
-}
+// async function createConnection() {
+//   try {
+//     const connection = await mysql.createConnection({
+//       host: process.env.DB_HOST,
+//       user: process.env.DB_USER,
+//       password: process.env.DB_PASSWORD,
+//       database: process.env.DB_NAME,
+//       charset: 'utf8mb4',
+//       ssl: {
+//         rejectUnauthorized: false,  // 必要に応じて設定
+//       }
+//     });
+//     console.log('データベースに接続しました');
+//     return connection;
+//   } catch (err) {
+//     console.error('データベース接続エラー:', err);
+//     throw err;
+//   }
+// }
 
 
 // MySQLデータベース接続設定(production)//
 //https://devcenter.heroku.com/articles/jawsdb#using-jawsdb-with-node-js
-// async function createConnection(){
-//   let connection//どのスコープからも利用可能にするため。まだundefinedでも、
-//   try{
-//   const connection = await mysql.createConnection(process.env.JAWSDB_URL);
-//   connection.connect();  
-//   console.log("データベースに接続しました");
-//   return connection;
-//   //connection.end();
-//   }catch(err){
-//     console.log("データベース接続エラー:", err);
-//     throw err;
-//   } finally{
-//     if(connection){
-//       await connection.end();
-//       console.log("データベース接続を閉じました from createConnection()");
-//     }
-//   }
-// }
+async function createConnection(){
+  let connection//どのスコープからも利用可能にするため。まだundefinedでも、
+  try{
+  const connection = await mysql.createConnection(process.env.JAWSDB_URL);
+  connection.connect();  
+  console.log("データベースに接続しました");
+  return connection;
+  //connection.end();
+  }catch(err){
+    console.log("データベース接続エラー:", err);
+    throw err;
+  } finally{
+    if(connection){
+      await connection.end();
+      console.log("データベース接続を閉じました from createConnection()");
+    }
+  }
+}
 //ここも環境変数に入れておく->.env->.gitignore
 const url = "https://note.com/search?q=%E6%B5%B7%E5%A4%96%E3%80%80%E6%8C%81%E3%81%A1%E7%89%A9%20&context=note&mode=search";
 let hasScraped = false; // Flag to check if scraping has been done

@@ -1,3 +1,7 @@
+document.getElementById("myButton").addEventListener("click", function() {
+    window.location.href = "/about";
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     fetch('/ranking')
     .then(response => response.json())
