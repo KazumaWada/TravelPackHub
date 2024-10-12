@@ -21,10 +21,16 @@ docker composeのDB設定がローカルのままで、herokuではそのファ�
 
 
 [今]
-## JawsDBのテーブルをローカルからmysqlに接続して作成することができた。
-手動で作った。テーブルも。
+10/8
+replaceID関数のreturnを修正する[done]
 ↓
-
+push(gitとheroku両方)
+↓
+timeouterrorを修正して全部取得できるようにする。
+↓
+articleWithAmzon.jsonデータをどこかに保管しておいて、もう一度やり直す。
+↓
+記事を出版.終了.
 
  [ファイルができたから、とりあえずリリースして見る]
  関数をコメントアウトする。
